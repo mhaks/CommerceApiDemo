@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using CommerceApiDem.Models;
 using CommerceApiDem.Data;
+using System.Security.Claims;
 
 namespace CommerceApiDemo.Controllers
 {
@@ -20,6 +21,8 @@ namespace CommerceApiDemo.Controllers
         {
             _context = context;
         }
+
+        #region Product
 
         [HttpGet]
         [Route("ProductCategories")]
@@ -48,6 +51,35 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
+        [Route("Search")]
+        public async Task<ActionResult<IEnumerable<Product>>> SearchProducts(string searchString, int? categoryId)
+        {
+            if(_context == null || _context.Product == null)
+                return NotFound();
+
+            var productsQuery = from p in _context.Product where p.IsActive select p;
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                searchString = searchString.ToUpper().Trim();
+                productsQuery = productsQuery.Where(p => p.Title.ToUpper().Contains(searchString) || p.Description.ToUpper().Contains(searchString) || p.Brand.ToUpper().Contains(searchString) || p.ProductCategory.Title.ToUpper().Contains(searchString));
+
+            }
+
+            if (categoryId != null)
+            {
+                productsQuery = productsQuery.Where(c => c.ProductCategoryId == categoryId);                
+            }
+
+
+            return await productsQuery
+                   .AsNoTracking()
+                   .Include(c => c.ProductCategory)
+                   .Take(20)
+                   .ToListAsync();
+        }
+
+        [HttpGet]
         [Route("Product")]
         public async Task<ActionResult<Product>> GetProduct(int? id)
         {
@@ -71,5 +103,46 @@ namespace CommerceApiDemo.Controllers
             }
 
         }
+
+        #endregion
+
+
+        #region Cart
+
+        [HttpGet]
+        [Route("CartCount")]
+        public async Task<ActionResult<int>> GetCartItemCount()
+        {
+            if (_context == null || _context.Order == null)
+            {
+                return NotFound();
+            }
+
+            // TODO
+            //var userId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userId = "4151283c-1311-4340-af4b-7862b384a330";
+
+            var order = await _context.Order
+                   .AsNoTracking()
+                   .Where(o => o.UserId == userId)
+                   .Include(c => c.OrderHistory)
+                   .Include(c => c.OrderProducts)
+                   .OrderBy(x => x.Id)
+                   .LastOrDefaultAsync();
+
+            int itemCount = 0;
+            if (order != null && order.OrderHistory != null)
+            {
+                var history = order.OrderHistory.OrderBy(x => x.OrderDate).LastOrDefault();
+                if (history != null && history.OrderStatusId == (int)OrderState.Cart)
+                {
+                    itemCount = order.OrderProducts.Count;
+                }
+            }
+
+            return itemCount;
+        }
+
+        #endregion
     }
 }
