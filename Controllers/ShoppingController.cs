@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using CommerceApiDem.Models;
 using CommerceApiDem.Data;
 using System.Security.Claims;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace CommerceApiDemo.Controllers
 {
@@ -15,12 +16,20 @@ namespace CommerceApiDemo.Controllers
     [ApiController]
     public class ShoppingController : ControllerBase
     {
+
+        // TODO
+        //var userId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        string _userId = "4151283c-1311-4340-af4b-7862b384a330";
+
+
         private readonly ApplicationDbContext _context;
 
         public ShoppingController(ApplicationDbContext context)
         {
             _context = context;
         }
+
+
 
         #region Product
 
@@ -107,6 +116,7 @@ namespace CommerceApiDemo.Controllers
         #endregion
 
 
+
         #region Cart
 
         [HttpGet]
@@ -118,13 +128,11 @@ namespace CommerceApiDemo.Controllers
                 return NotFound();
             }
 
-            // TODO
-            //var userId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var userId = "4151283c-1311-4340-af4b-7862b384a330";
+            
 
             var order = await _context.Order
                    .AsNoTracking()
-                   .Where(o => o.UserId == userId)
+                   .Where(o => o.UserId == _userId)
                    .Include(c => c.OrderHistory)
                    .Include(c => c.OrderProducts)
                    .OrderBy(x => x.Id)
@@ -143,6 +151,248 @@ namespace CommerceApiDemo.Controllers
             return itemCount;
         }
 
+
+        [HttpGet]
+        [Route("Cart")]
+        public async Task<ActionResult<Order>> GetCart()
+        {
+            if (_context == null || _context.Order == null)
+                return NotFound();
+
+
+            var query = _context.Order.Where(c => c.UserId == _userId).AsNoTracking();
+            var order = await GetCartOrder(query);
+            return order;
+        }
+
+        [HttpPost]
+        [Route("AddCartProduct")]
+        public async Task<ActionResult<Order>> AddCartProduct(int productId, int quantity)
+        {
+            if (_context == null || _context.Product == null || _context.Order == null)
+                return NotFound();
+
+            var product = _context.Product.Where(p => p.Id == productId).FirstOrDefault();
+            if (product == null)
+            {
+                return NotFound();
+            }
+
+            var query = _context.Order.Where(c => c.UserId == _userId);
+            var order = await GetCartOrder(query);
+
+            order.OrderProducts ??= new List<OrderProduct>();
+            order.OrderProducts.Add(new OrderProduct { Order = order, ProductId = productId, Quantity = quantity, Price = product.Price });
+
+
+            order.OrderHistory ??= new List<OrderHistory>
+            {
+                new OrderHistory { Order = order, OrderDate = DateTime.UtcNow, OrderStatusId = (int)OrderState.Cart }
+            };
+
+            if (order.Id == 0 && !String.IsNullOrEmpty(_userId))
+            {
+                order.UserId = _userId;
+                _context.Order.Add(order);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return order;
+
+        }
+
+        [HttpPost]
+        [Route("EditCartProduct")]
+        public async Task<ActionResult<Order>> EditCartProduct(int orderId, int orderProductId, int quantity, string action)
+        {
+            if (_context == null || _context.Order == null)
+                return NotFound();
+
+            /* TODO
+            if (!ModelState.IsValid)
+            {
+                return Page();
+            }
+            */
+
+            var query = _context.Order.Where(o => o.Id == orderId);
+            var order = await GetCartOrder(query);
+
+            var prod = order.OrderProducts.Where(op => op.Id == orderProductId).FirstOrDefault();
+            if (prod != null)
+            {
+                if (action == "update")
+                {
+                    if (quantity > 0)
+                    {
+                        prod.Quantity = quantity;
+                    }
+                    else
+                    {
+                        order.OrderProducts.Remove(prod);
+
+                    }
+                }
+                else if (action == "remove")
+                {
+                    order.OrderProducts.Remove(prod);
+                }
+            }
+
+            // no products, remove empty order, no
+            if (!order.OrderProducts.Any())
+            {
+                _context.Order.Remove(order);
+                
+            }
+
+            await _context.SaveChangesAsync();
+
+            return await GetCartOrder(query);
+        }
+
+        [HttpPost]
+        [Route("Checkout")]
+        public async Task<ActionResult<int>> CheckoutOrder(int orderId)
+        {
+            if (_context == null || _context.Order == null)
+                return NotFound();
+
+            /*
+            if (!ModelState.IsValid)
+            {
+                LoadExpirations();
+                return Page();
+            }
+            */
+
+            var order = await _context.Order
+                .Where(o => o.Id == orderId && o.UserId == _userId)
+                .Include(p => p.OrderProducts)
+                .ThenInclude(p => p.Product)
+                .Include(h => h.OrderHistory)
+                .FirstOrDefaultAsync();
+
+            if (order == null)
+                return NotFound();
+
+            var processing = new OrderHistory { OrderId = orderId, OrderDate = DateTime.UtcNow, OrderStatusId = (int)OrderState.Processing };
+            order.OrderHistory.Add(processing);
+
+            foreach (var item in order.OrderProducts)
+            {
+                var product = _context.Product.Where(p => p.Id == item.ProductId).FirstOrDefault();
+                if (product == null) continue;
+                product.AvailableQty = product.AvailableQty - item.Quantity;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return orderId;
+        }
+
+
+        async Task<Order> GetCartOrder(IQueryable<Order> query)
+        {
+            var order = await query
+                .Include(c => c.User)
+                .ThenInclude(c => c.StateLocation)
+                .Include(c => c.OrderProducts)
+                .ThenInclude(p => p.Product)
+                .Include(c => c.OrderHistory)
+                .ThenInclude(c => c.OrderStatus)
+                .OrderBy(x => x.Id)
+                .LastOrDefaultAsync();
+
+            if (order == null || order.OrderHistory == null || !order.OrderHistory.Any())
+            {
+                return new Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>() };
+            }
+
+            var history = order.OrderHistory.OrderBy(x => x.OrderDate).LastOrDefault();
+            if (history == null || history.OrderStatusId != (int)OrderState.Cart)
+            {
+                return new Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>() };
+            }
+
+            return order;
+        }
+
         #endregion
+
+
+
+        #region Ordered
+
+        [HttpGet]
+        [Route("Order")]
+        public async Task<ActionResult<Order>> GetOrder(int orderId)
+        {
+            if (_context == null || _context.Order == null)
+                return NotFound();
+
+
+            var order = await _context.Order
+                            .Where(o => o.Id == orderId && o.UserId == _userId)
+                            .Include(c => c.User)
+                            .ThenInclude(s => s.StateLocation)
+                            .Include(p => p.OrderProducts)
+                            .ThenInclude(p => p.Product)
+                            .Include(h => h.OrderHistory)
+                            .ThenInclude(s => s.OrderStatus)
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync();
+
+            if (order == null)
+                return NotFound();
+
+            // don't need to show initial cart
+            order.OrderHistory.Remove(order.OrderHistory.First(h => h.OrderStatusId == (int)OrderState.Cart));
+            return order;
+        }
+
+        [HttpGet]
+        [Route("Orders")]
+        public async Task<ActionResult<IEnumerable<Order>>> GetOrders(int? statusId)
+        {
+            if (_context == null || _context.Order == null)
+                return NotFound();
+
+            var orders = await _context.Order
+                            .Where(o => o.UserId == _userId)
+                            .Include(p => p.OrderProducts)
+                            .Include(h => h.OrderHistory)
+                            .ThenInclude(s => s.OrderStatus)
+                            .Include(c => c.User)
+                            .ThenInclude(s => s.StateLocation)
+                            .OrderByDescending(o => o.OrderHistory.First().OrderDate)
+                            .AsNoTracking()
+                            .ToListAsync();
+
+            var removes = new List<Order>();
+            foreach (var order in orders)
+            {
+                // don't need to show order in cart
+                var history = order.OrderHistory.OrderBy(x => x.OrderDate).LastOrDefault();
+                if (history == null || history.OrderStatusId == (int)OrderState.Cart)
+                {
+                    removes.Add(order);
+                    break;
+                }
+
+                if (statusId.HasValue && history.OrderStatusId != statusId)
+                    removes.Add(order);
+            }
+
+            foreach (var item in removes)
+                orders.Remove(item);
+
+            return orders;
+        }
+
+        #endregion
+
+
     }
 }
