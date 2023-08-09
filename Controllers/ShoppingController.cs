@@ -61,8 +61,9 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("Search")]
-        public async Task<ActionResult<IEnumerable<Product>>> SearchProducts(string searchString, int? categoryId)
+        public async Task<ActionResult<IEnumerable<Product>>> SearchProducts(string? searchString, int? categoryId)
         {
+            Console.WriteLine($"Search: {searchString} - {categoryId}");
             if(_context == null || _context.Product == null)
                 return NotFound();
 
