@@ -168,8 +168,9 @@ namespace CommerceApiDemo.Controllers
 
         [HttpPost]
         [Route("AddCartProduct")]
-        public async Task<ActionResult<Order>> AddCartProduct(int productId, int quantity)
+        public async Task<ActionResult<int>> AddCartProduct([FromForm] int productId, [FromForm] int quantity)
         {
+            
             if (_context == null || _context.Product == null || _context.Order == null)
                 return NotFound();
 
@@ -199,13 +200,13 @@ namespace CommerceApiDemo.Controllers
 
             await _context.SaveChangesAsync();
 
-            return order;
+            return order.Id;
 
         }
 
         [HttpPost]
         [Route("EditCartProduct")]
-        public async Task<ActionResult<Order>> EditCartProduct(int orderId, int orderProductId, int quantity, string action)
+        public async Task<ActionResult<int>> EditCartProduct([FromForm] int orderId, [FromForm] int orderProductId, [FromForm] int quantity, [FromForm] string action)
         {
             if (_context == null || _context.Order == null)
                 return NotFound();
@@ -250,12 +251,13 @@ namespace CommerceApiDemo.Controllers
 
             await _context.SaveChangesAsync();
 
-            return await GetCartOrder(query);
+            order = await GetCartOrder(query);
+            return order.Id;
         }
 
         [HttpPost]
         [Route("Checkout")]
-        public async Task<ActionResult<int>> CheckoutOrder(int orderId)
+        public async Task<ActionResult<int>> CheckoutOrder([FromForm] int orderId)
         {
             if (_context == null || _context.Order == null)
                 return NotFound();
