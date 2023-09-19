@@ -180,11 +180,27 @@ namespace CommerceApiDemo.Controllers
                 return NotFound();
             }
 
+            if (quantity <= 0)
+            {
+                var msg = "Product Quantity to add must be greater than 0";
+                var customError = new
+                {
+                    Message = msg,
+                    Errors = new List<string> { msg }// Initialize the Errors list
+                };
+                return BadRequest();
+            }
+
             var query = _context.Order.Where(c => c.UserId == _userId);
             var order = await GetCartOrder(query);
 
             order.OrderProducts ??= new List<OrderProduct>();
-            order.OrderProducts.Add(new OrderProduct { Order = order, ProductId = productId, Quantity = quantity, Price = product.Price });
+
+            var oproduct = order.OrderProducts.FirstOrDefault(op => op.ProductId == productId);
+            if (oproduct != null)
+                oproduct.Quantity += quantity;
+            else
+                order.OrderProducts.Add(new OrderProduct { Order = order, ProductId = productId, Quantity = quantity, Price = product.Price });
 
 
             order.OrderHistory ??= new List<OrderHistory>
