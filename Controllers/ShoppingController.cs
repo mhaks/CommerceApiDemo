@@ -51,11 +51,11 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("TopProducts")]
-        public async Task<ActionResult<IEnumerable<Product>>> GetTopProducts()
+        public async Task<ActionResult<IEnumerable<Product>>> GetTopProducts(int count = 4)
         {
             return  await _context.Product
                 .OrderByDescending(a => _context.OrderProduct.Count(b => b.ProductId == a.Id))
-                .Take(4)
+                .Take(count)
                 .ToListAsync();
         }
 
@@ -121,7 +121,7 @@ namespace CommerceApiDemo.Controllers
         #region Cart
 
         [HttpGet]
-        [Route("CartCount")]
+        [Route("Cart/Count")]
         public async Task<ActionResult<int>> GetCartItemCount()
         {
             if (_context == null || _context.Order == null)
@@ -166,8 +166,8 @@ namespace CommerceApiDemo.Controllers
             return order;
         }
 
-        [HttpPost]
-        [Route("AddCartProduct")]
+        [HttpPut]
+        [Route("Cart/Add")]
         public async Task<ActionResult<int>> AddCartProduct([FromForm] int productId, [FromForm] int quantity)
         {
             
@@ -194,7 +194,6 @@ namespace CommerceApiDemo.Controllers
             var query = _context.Order.Where(c => c.UserId == _userId);
             var order = await GetCartOrder(query);
 
-            order.OrderProducts ??= new List<OrderProduct>();
 
             var oproduct = order.OrderProducts.FirstOrDefault(op => op.ProductId == productId);
             if (oproduct != null)
@@ -203,9 +202,9 @@ namespace CommerceApiDemo.Controllers
                 order.OrderProducts.Add(new OrderProduct { Order = order, ProductId = productId, Quantity = quantity, Price = product.Price });
 
 
-            order.OrderHistory ??= new List<OrderHistory>
+            if (!order.OrderHistory.Any()) 
             {
-                new OrderHistory { Order = order, OrderDate = DateTime.UtcNow, OrderStatusId = (int)OrderState.Cart }
+                order.OrderHistory.Add(new OrderHistory { Order = order, OrderDate = DateTime.UtcNow, OrderStatusId = (int)OrderState.Cart });                
             };
 
             if (order.Id == 0 && !String.IsNullOrEmpty(_userId))
@@ -220,8 +219,8 @@ namespace CommerceApiDemo.Controllers
 
         }
 
-        [HttpPost]
-        [Route("EditCartProduct")]
+        [HttpPut]
+        [Route("Cart/Edit")]
         public async Task<ActionResult<int>> EditCartProduct([FromForm] int orderId, [FromForm] int orderProductId, [FromForm] int quantity, [FromForm] string action)
         {
             if (_context == null || _context.Order == null)
@@ -326,14 +325,16 @@ namespace CommerceApiDemo.Controllers
 
             if (order == null || order.OrderHistory == null || !order.OrderHistory.Any())
             {
-                return new Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>() };
+                var user = await _context.Users.Where(x => x.Id == _userId).Include(c => c.StateLocation).FirstAsync();
+                return new Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>(), UserId = user.Id, User = user};
             }
 
             var history = order.OrderHistory.OrderBy(x => x.OrderDate).LastOrDefault();
             if (history == null || history.OrderStatusId != (int)OrderState.Cart)
             {
-                return new Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>() };
-            }
+                var user = await _context.Users.Where(x => x.Id == _userId).Include(c => c.StateLocation).FirstAsync();
+                return new Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>(), UserId = user.Id, User = user };
+            };
 
             return order;
         }
