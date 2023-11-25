@@ -347,14 +347,14 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("Order")]
-        public async Task<ActionResult<Order>> GetOrder(int orderId)
+        public async Task<ActionResult<Order>> GetOrder(int id)
         {
             if (_context == null || _context.Order == null)
                 return NotFound();
 
 
             var order = await _context.Order
-                            .Where(o => o.Id == orderId && o.UserId == _userId)
+                            .Where(o => o.Id == id && o.UserId == _userId)
                             .Include(c => c.User)
                             .ThenInclude(s => s.StateLocation)
                             .Include(p => p.OrderProducts)
