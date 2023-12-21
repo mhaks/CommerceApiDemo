@@ -411,6 +411,20 @@ namespace CommerceApiDemo.Controllers
             return orders;
         }
 
+
+        [HttpGet]
+        [Route("OrderStatuses")]
+        public async Task<ActionResult<IEnumerable<OrderStatus>>> GetOrderStatuses()
+        {
+            if (_context == null || _context.OrderStatus == null)
+                return NotFound();
+
+            return await _context.OrderStatus
+                .AsNoTracking()
+                .Where(x => x.Id != (int)OrderState.Cart)
+                .OrderBy(x => x.Name)
+                .ToListAsync();
+        }   
         #endregion
 
 
