@@ -272,18 +272,26 @@ namespace CommerceApiDemo.Controllers
 
         [HttpPost]
         [Route("Checkout")]
-        public async Task<ActionResult<int>> CheckoutOrder([FromForm] int orderId)
+        public async Task<ActionResult<int>> CheckoutOrder([FromForm] int orderId, [FromForm] string cardName, [FromForm] string cardNumber, [FromForm] string cardExpiration, [FromForm] string cardCVV)
         {
             if (_context == null || _context.Order == null)
                 return NotFound();
 
-            /*
-            if (!ModelState.IsValid)
+
+            if (String.IsNullOrEmpty(cardName) || cardName.Length < 3
+                || String.IsNullOrEmpty(cardNumber) || cardNumber.Length < 16
+                || String.IsNullOrEmpty(cardExpiration) || cardExpiration.Length < 4
+                || String.IsNullOrEmpty(cardCVV) || cardCVV.Length < 3)
             {
-                LoadExpirations();
-                return Page();
+                var msg = "Credit Card information is required";
+                var customError = new
+                {
+                    Message = msg,
+                    Errors = new List<string> { msg }// Initialize the Errors list
+                };
+                return BadRequest(customError);
             }
-            */
+         
 
             var order = await _context.Order
                 .Where(o => o.Id == orderId && o.UserId == _userId)
