@@ -226,13 +226,6 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null)
                 return NotFound();
 
-            /* TODO
-            if (!ModelState.IsValid)
-            {
-                return Page();
-            }
-            */
-
             var query = _context.Order.Where(o => o.Id == orderId);
             var order = await GetCartOrder(query);
 
