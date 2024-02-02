@@ -9,6 +9,7 @@ using CommerceApiDem.Models;
 using CommerceApiDem.Data;
 using System.Security.Claims;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CommerceApiDemo.Controllers
 {
@@ -33,6 +34,7 @@ namespace CommerceApiDemo.Controllers
 
         #region Product
 
+        //[Authorize]
         [HttpGet]
         [Route("ProductCategories")]
         public async Task<ActionResult<IEnumerable<ProductCategory>>> GetProductCategories()
