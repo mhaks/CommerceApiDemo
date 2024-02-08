@@ -2,7 +2,7 @@ name: Build and deploy .NET Core application to Web App CommerceDemoApi
 on:
   push:
     branches:
-    - develop
+    - master
 env:
   AZURE_WEBAPP_NAME: CommerceDemoApi
   AZURE_WEBAPP_PACKAGE_PATH: .\publish
