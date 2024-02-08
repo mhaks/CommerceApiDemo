@@ -46,7 +46,11 @@ var app = builder.Build();
 app.MapIdentityApi<ApplicationUser>();
 
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(x => { 
+    x.SwaggerEndpoint("/swagger/v1/swagger.json", "CommerceApiDemo v1");
+    x.RoutePrefix = string.Empty; 
+});
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
