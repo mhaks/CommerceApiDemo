@@ -46,12 +46,13 @@ var app = builder.Build();
 app.MapIdentityApi<ApplicationUser>();
 
 app.UseSwagger();
+app.UseSwaggerUI();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage();
     
-    app.UseSwaggerUI();    
 }
 
 app.UseHttpsRedirection();
