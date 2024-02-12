@@ -37,8 +37,8 @@ namespace CommerceApiDemo.Controllers
 
 
         [HttpGet]
-        [Route("CurrentUser")]
-        public async Task<ActionResult<AppUser>> CurrentUser()
+        [Route("User")]
+        public async Task<ActionResult<AppUser>> GetUser()
         {
             ApplicationUser? applicationUser = null;
             if (User.Identity == null || !User.Identity.IsAuthenticated)
@@ -68,9 +68,9 @@ namespace CommerceApiDemo.Controllers
             return new AppUser { FirstName = applicationUser.FirstName, LastName = applicationUser.LastName, Id = applicationUser.Id, UserName = applicationUser.UserName };
         }
 
-        [HttpPost]
-        [Route("ChangeUser")]
-        public async Task<ActionResult> ChangeUser([FromBody] string userName)
+        [HttpPut]
+        [Route("User")]
+        public async Task<ActionResult> SetUser([FromForm] string userName)
         {
             if (string.IsNullOrEmpty(userName))
                 return BadRequest();
