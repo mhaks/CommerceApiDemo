@@ -3,6 +3,7 @@ using CommerceApiDem.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 
 namespace CommerceApiDemo.Controllers
 {
@@ -23,14 +24,12 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("Users")]
-        public async Task<ActionResult<IEnumerable<AppUser>>> Users()
+        public async Task<ActionResult<IEnumerable<CommerceUser>>> Users()
         {
             if (_context == null || _context.Users == null)
                 return NotFound();
 
-            
-
-            var query = from u in _context.Users orderby u.UserName select new AppUser { FirstName = u.FirstName, LastName = u.LastName, Id = u.Id, UserName = u.UserName };
+            var query = from u in _context.Users orderby u.UserName select new CommerceUser(u, null, null);
 
             return await query.ToListAsync();
         }
@@ -38,17 +37,19 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("User")]
-        public async Task<ActionResult<AppUser>> GetUser()
+        public async Task<ActionResult<CommerceUser>> GetUser()
         {
-            ApplicationUser? applicationUser = null;
+            ApplicationUser? appUser = null;
             if (User.Identity == null || !User.Identity.IsAuthenticated)
             {
+                Debug.WriteLine("GetUser: "  + User.Identity == null ? "No user" : "User not authenticated");
                 // Find the default user by username                
-                applicationUser = await _userManager.FindByNameAsync("jerry");
-                if (applicationUser != null)
+                appUser = await _userManager.FindByNameAsync("jerry");
+                if (appUser != null)
                 {
                     // Sign in the default user
-                    await _signInManager.SignInAsync(applicationUser, isPersistent: false);
+                    await _signInManager.SignInAsync(appUser, isPersistent: false);
+                    Debug.WriteLine($"GetUser {appUser.UserName} logged in");
                 }
                 else
                 {
@@ -57,42 +58,58 @@ namespace CommerceApiDemo.Controllers
             }
             else
             {
-                applicationUser = await _userManager.FindByNameAsync(User.Identity?.Name ?? "jerry");
+                Debug.WriteLine("GetUser authenticated: " + User.Identity.Name);
+                appUser = await _userManager.FindByNameAsync(User.Identity?.Name ?? "jerry");
             }
             
-
         
-            if (applicationUser == null)
+            if (appUser == null)
                 return NotFound();
 
-            return new AppUser { FirstName = applicationUser.FirstName, LastName = applicationUser.LastName, Id = applicationUser.Id, UserName = applicationUser.UserName };
+            return new CommerceUser(appUser, User.Identity.IsAuthenticated, User.IsInRole("ADMIN"));
         }
 
         [HttpPut]
         [Route("User")]
-        public async Task<ActionResult> SetUser([FromForm] string userName)
+        public async Task<ActionResult<CommerceUser>> SetUser([FromForm] string userName)
         {
+            Debug.WriteLine($"SetUser {userName} logging in");
+
+
             if (string.IsNullOrEmpty(userName))
                 return BadRequest();
-
+                        
             var appUser = await _userManager.FindByNameAsync(userName);
+
             if (appUser == null)
                 return NotFound();
 
             await _signInManager.SignOutAsync();
             await _signInManager.SignInAsync(appUser, isPersistent: false);
-            Console.WriteLine($"User {userName} logged in");
+            Debug.WriteLine($"SetUser {userName} logged in");
 
-            return Ok();
+            return new CommerceUser(appUser, User.Identity.IsAuthenticated, User.IsInRole("ADMIN"));
         }
 
 
-        public class AppUser
+        public class CommerceUser
         {
+            public CommerceUser(ApplicationUser user, bool? isAuthenticated, bool? isAdministrator)
+            {
+                FirstName = user.FirstName;
+                LastName = user.LastName;
+                Id = user.Id;
+                UserName = user.UserName;
+                IsAuthenticated = isAuthenticated;
+                IsAdministrator = isAdministrator;
+            }
+
             public string FirstName { get; set; } = string.Empty;
             public string LastName { get; set; } = string.Empty;
             public string Id { get; set; } = string.Empty;
             public string? UserName { get; set; } = string.Empty;
+            public bool? IsAuthenticated { get; set; }
+            public bool? IsAdministrator { get; set; }
         }
 
     }

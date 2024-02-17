@@ -10,6 +10,9 @@ using CommerceApiDem.Data;
 using System.Security.Claims;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Filters;
+using System.Diagnostics;
 
 namespace CommerceApiDemo.Controllers
 {
@@ -18,19 +21,26 @@ namespace CommerceApiDemo.Controllers
     public class ShoppingController : ControllerBase
     {
 
-        // TODO
-        //var userId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        string _userId = "4151283c-1311-4340-af4b-7862b384a330";
-
+        string _userId = string.Empty;
 
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
 
-        public ShoppingController(ApplicationDbContext context)
+        public ShoppingController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
         {
             _context = context;
+            _userManager = userManager;
+            _signInManager = signInManager;
+
         }
 
-
+        private void Initialize()
+        {
+            //_userId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            _userId = "4151283c-1311-4340-af4b-7862b384a330";
+        }
+       
 
         #region Product
 
@@ -131,7 +141,8 @@ namespace CommerceApiDemo.Controllers
                 return NotFound();
             }
 
-            
+            Initialize();
+            Debug.WriteLine($"GetCartItemCount: {_userId}");
 
             var order = await _context.Order
                    .AsNoTracking()
@@ -162,6 +173,8 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null)
                 return NotFound();
 
+            Initialize();
+            Debug.WriteLine($"GetCart: {_userId}");
 
             var query = _context.Order.Where(c => c.UserId == _userId).AsNoTracking();
             var order = await GetCartOrder(query);
@@ -175,6 +188,9 @@ namespace CommerceApiDemo.Controllers
             
             if (_context == null || _context.Product == null || _context.Order == null)
                 return NotFound();
+
+            Initialize();
+            Debug.WriteLine($"AddCartProduct: {_userId}");
 
             var product = _context.Product.Where(p => p.Id == productId).FirstOrDefault();
             if (product == null)
@@ -228,6 +244,9 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null)
                 return NotFound();
 
+            Initialize();
+            Debug.WriteLine($"EditCart: {_userId}");
+
             var query = _context.Order.Where(o => o.Id == orderId);
             var order = await GetCartOrder(query);
 
@@ -272,6 +291,8 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null)
                 return NotFound();
 
+            Initialize();
+            Debug.WriteLine($"Checkout: {_userId}");
 
             if (String.IsNullOrEmpty(cardName) || cardName.Length < 3
                 || String.IsNullOrEmpty(cardNumber) || cardNumber.Length < 16
@@ -355,6 +376,8 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null)
                 return NotFound();
 
+            Initialize();
+            Debug.WriteLine($"GetOrder: {_userId}");
 
             var order = await _context.Order
                             .Where(o => o.Id == id && o.UserId == _userId)
@@ -381,6 +404,9 @@ namespace CommerceApiDemo.Controllers
         {
             if (_context == null || _context.Order == null)
                 return NotFound();
+
+            Initialize();
+            Debug.WriteLine($"GetOrders: {_userId}");
 
             var orders = await _context.Order
                             .Where(o => o.UserId == _userId)
