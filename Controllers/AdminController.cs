@@ -89,7 +89,7 @@ namespace CommerceApiDemo.Controllers
 
 
 
-            var result = new OrderSummary() { 
+            var result = new  { 
                 OrderCount = orders.Count, 
                 ProductCount = orders.Sum(o => o.OrderProducts.Count()),
                 Revenue = orders.Sum(o => o.Subtotal)
@@ -128,8 +128,8 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
-        [Route("OrderStatus")]
-        public async Task<ActionResult<IEnumerable<OrderStatus>>> GetOrderStatuses()
+        [Route("OrderStates")]
+        public async Task<ActionResult<IEnumerable<OrderStatus>>> GetOrderStates()
         {
             if (_context == null || _context.OrderStatus == null)
                 return NotFound();
@@ -139,14 +139,50 @@ namespace CommerceApiDemo.Controllers
                 .OrderBy(x => x.Name)
                 .ToListAsync();
         }
+
+
+
+        [HttpGet]
+        [Route("Orders")]
+        public async Task<ActionResult<IEnumerable<object>>> GetOrders()
+        {
+            if (_context == null || _context.Order == null)
+                return NotFound();
+
+            var orders = await _context.Order
+                .Include(o => o.OrderProducts)
+                .Include(o => o.OrderHistory)
+                .Include(c => c.User)
+                .ThenInclude(c => c.StateLocation)
+                .AsNoTracking()
+                .Select(o => new
+                {
+                    OrderId = o.Id,
+                    UserName = o.User.UserName,
+                    OrderDate = o.OrderHistory
+                        .Where(h => h.OrderStatusId == 2)
+                        .OrderBy(h => h.OrderDate)
+                        .Select(h => h.OrderDate)
+                        .FirstOrDefault(),
+                    StatusId = o.OrderHistory
+                        .OrderBy(h => h.OrderDate)
+                        .Select(h => h.OrderStatusId)
+                        .LastOrDefault(),
+                    StatusName = o.OrderHistory
+                        .OrderBy(h => h.OrderDate)
+                        .Select(h => h.OrderStatus.Name)
+                        .LastOrDefault(),
+                    StatusDate = o.OrderHistory
+                        .OrderBy(h => h.OrderDate)
+                        .Select(h => h.OrderDate)
+                        .LastOrDefault(),
+                })
+                .OrderBy(o => o.OrderId)
+                .ToListAsync();
+
+            return Ok(orders);
+        }
+
     }
 
-    public class OrderSummary
-    {
-        public int OrderCount { get; set; }
-        public int ProductCount { get; set; }
-        public decimal Revenue { get; set; }       
-    }
-
-   
 }
