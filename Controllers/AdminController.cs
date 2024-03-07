@@ -38,7 +38,9 @@ namespace CommerceApiDemo.Controllers
 
             var orders = await query
                             .Include(o => o.OrderProducts)
+                            .ThenInclude(p => p.Product)
                             .Include(o => o.OrderHistory)
+                            .ThenInclude(h => h.OrderStatus)
                             .Include(c => c.User)
                             .ThenInclude(c => c.StateLocation)
                             .AsNoTracking()
@@ -181,6 +183,29 @@ namespace CommerceApiDemo.Controllers
                 .ToListAsync();
 
             return Ok(orders);
+        }
+
+        [HttpGet]
+        [Route("Order/{id}")]
+        public async Task<ActionResult<Order>> GetOrder(int id)
+        {
+            if (_context == null || _context.Order == null)
+                return NotFound();
+
+            var order = await _context.Order
+                .Include(o => o.OrderProducts)
+                .ThenInclude(p => p.Product)
+                .Include(o => o.OrderHistory)
+                .ThenInclude(h => h.OrderStatus)
+                .Include(c => c.User)
+                .ThenInclude(c => c.StateLocation)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.Id == id);
+
+            if (order == null)
+                return NotFound();
+
+            return order;
         }
 
     }
