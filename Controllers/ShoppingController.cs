@@ -46,7 +46,7 @@ namespace CommerceApiDemo.Controllers
 
         //[Authorize]
         [HttpGet]
-        [Route("ProductCategories")]
+        [Route("Categories")]
         public async Task<ActionResult<IEnumerable<ProductCategory>>> GetProductCategories()
         {
             if (_context == null || _context.ProductCategory == null)
@@ -59,6 +59,24 @@ namespace CommerceApiDemo.Controllers
                 .OrderBy(x => x.Title)
                 .ToListAsync();
         }
+
+        [HttpGet]
+        [Route("Brands")]
+        public async Task<ActionResult<IEnumerable<string>>> GetProductBrands()
+        {
+            if (_context == null || _context.Product == null)
+            {
+                return new List<string>();
+            }
+
+            return await _context.Product
+                .AsNoTracking()
+                .Where(x => x.IsActive)
+                .Select(x => x.Brand)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToListAsync();
+        }   
 
 
         [HttpGet]

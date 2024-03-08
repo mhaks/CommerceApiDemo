@@ -1,5 +1,6 @@
 ﻿using CommerceApiDem.Data;
 using CommerceApiDem.Models;
+using CommerceApiDemo.DtoModels;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -142,8 +143,6 @@ namespace CommerceApiDemo.Controllers
                 .ToListAsync();
         }
 
-
-
         [HttpGet]
         [Route("Orders")]
         public async Task<ActionResult<IEnumerable<object>>> GetOrders()
@@ -208,6 +207,35 @@ namespace CommerceApiDemo.Controllers
             return order;
         }
 
+
+        [HttpGet]
+        [Route("Products")]
+        public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts()
+        {
+            if (_context == null || _context.Product == null)
+                return NotFound();
+
+            var products = await _context.Product
+                .Include(p => p.ProductCategory)
+                .AsNoTracking()
+                .Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    Title = p.Title,
+                    Description = p.Description,
+                    Brand = p.Brand,
+                    Model = p.ModelNumber,
+                    Category = p.ProductCategory.Title,
+                    CategoryId = p.ProductCategory.Id,
+                    Price = p.Price,
+                    AvailableQty = p.AvailableQty,
+                    IsActive = p.IsActive
+                })
+                .OrderBy(p => p.Title)
+                .ToListAsync();
+
+            return Ok(products);
+        }
     }
 
 }
