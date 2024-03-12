@@ -236,6 +236,55 @@ namespace CommerceApiDemo.Controllers
 
             return Ok(products);
         }
+
+
+        [HttpGet]
+        [Route("Product/{id}")]
+        public async Task<ActionResult<ProductDto>> GetProduct(int id)
+        {
+            if (_context == null || _context.Product == null)
+                return NotFound();
+
+            var product = await _context.Product
+                .Where(p => p.Id == id)
+                .Include(p => p.ProductCategory)
+                .AsNoTracking()
+                .Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    Title = p.Title,
+                    Description = p.Description,
+                    Brand = p.Brand,
+                    Model = p.ModelNumber,
+                    Category = p.ProductCategory.Title,
+                    CategoryId = p.ProductCategory.Id
+                })
+                .FirstOrDefaultAsync();
+
+            if (product == null)    
+                return NotFound();
+            else
+                return product;
+        }
+
+
+        [HttpGet]
+        [Route("Customers")]
+        public async Task<ActionResult<IEnumerable<ApplicationUser>>> GetCustomers()
+        {
+            if (_context == null || _context.Users == null)
+                return NotFound();
+
+            var customers = await _userManager.GetUsersInRoleAsync("CUSTOMER");
+
+            var query = from c in customers 
+                        join st in _context.StateLocation on c.StateLocationId equals st.Id
+                        select c;
+
+            var users =query.OrderBy(c => c.LastName).ThenBy(c => c.FirstName).ToList();
+ 
+            return Ok(users);
+        }
     }
 
 }
