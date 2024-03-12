@@ -257,7 +257,10 @@ namespace CommerceApiDemo.Controllers
                     Brand = p.Brand,
                     Model = p.ModelNumber,
                     Category = p.ProductCategory.Title,
-                    CategoryId = p.ProductCategory.Id
+                    CategoryId = p.ProductCategory.Id, 
+                    Price = p.Price,
+                    AvailableQty = p.AvailableQty,
+                    IsActive = p.IsActive
                 })
                 .FirstOrDefaultAsync();
 
@@ -266,6 +269,7 @@ namespace CommerceApiDemo.Controllers
             else
                 return product;
         }
+
 
 
         [HttpGet]
