@@ -271,6 +271,23 @@ namespace CommerceApiDemo.Controllers
         }
 
 
+        [HttpGet]
+        [Route("Category/{id}")]
+        public async Task<ActionResult<ProductCategory>> GetCategory(int id)
+        {
+            if (_context == null || _context.ProductCategory == null)
+                return NotFound();
+
+            var category = await _context.ProductCategory
+                .Where(c => c.Id == id)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+            if (category == null)
+                return NotFound();
+            else
+                return category;
+        }
 
         [HttpGet]
         [Route("Customers")]
@@ -285,9 +302,44 @@ namespace CommerceApiDemo.Controllers
                         join st in _context.StateLocation on c.StateLocationId equals st.Id
                         select c;
 
-            var users =query.OrderBy(c => c.LastName).ThenBy(c => c.FirstName).ToList();
+            var users = query.OrderBy(c => c.LastName).ThenBy(c => c.FirstName).ToList();
  
             return Ok(users);
+        }
+
+        [HttpGet]
+        [Route("Customer/{id}")]
+        public async Task<ActionResult<ApplicationUser>> GetCustomer(string id)
+        {
+            if (_context == null || _context.Users == null)
+                return NotFound();
+
+            var customers = await _userManager.GetUsersInRoleAsync("CUSTOMER");
+
+            var query = from c in customers
+                        where c.Id == id
+                        join st in _context.StateLocation on c.StateLocationId equals st.Id
+                        select c;
+
+            var user = query.FirstOrDefault();
+
+            if (user == null)
+                return NotFound();
+            else
+                return user;
+        }
+
+        [HttpGet]
+        [Route("States")]
+        public async Task<ActionResult<IEnumerable<StateLocation>>> GetStates()
+        {
+            if (_context == null || _context.StateLocation == null)
+                return NotFound();
+
+            return await _context.StateLocation
+                .AsNoTracking()
+                .OrderBy(x => x.Name)
+                .ToListAsync();
         }
     }
 
