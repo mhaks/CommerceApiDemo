@@ -4,6 +4,7 @@ using CommerceApiDemo.DtoModels;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 namespace CommerceApiDemo.Controllers
 {
@@ -288,6 +289,40 @@ namespace CommerceApiDemo.Controllers
             else
                 return category;
         }
+
+        [HttpPut]
+        [Route("Category")]
+        public async Task<ActionResult<ProductCategory>> UpdateCategory([FromForm] ProductCategory category)
+        {
+            if (_context == null || _context.ProductCategory == null)
+                return NotFound();
+
+            if (category.Title.IsNullOrEmpty())
+            {
+                var msg = "Category title is required.";
+                var customError = new
+                {
+                    Message = msg,
+                    Errors = new List<string> { msg }// Initialize the Errors list
+                };
+                return BadRequest();
+            }
+
+
+            if (category.Id == 0)
+            {
+                _context.Add(category);
+            }
+            else
+            {
+                _context.Update(category);
+            }
+
+            await _context.SaveChangesAsync();
+
+            return category;
+        }
+        
 
         [HttpGet]
         [Route("Customers")]
