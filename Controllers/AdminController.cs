@@ -2,9 +2,11 @@
 using CommerceApiDem.Models;
 using CommerceApiDemo.DtoModels;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Net.Mail;
 
 namespace CommerceApiDemo.Controllers
 {
@@ -362,6 +364,144 @@ namespace CommerceApiDemo.Controllers
                 return NotFound();
             else
                 return user;
+        }
+
+        [HttpPut]
+        [Route("Customer")]
+        public async Task<ActionResult<CustomerDto>> UpdateCustomer([FromForm] CustomerDto customer)
+        {
+            if (_context == null || _context.Users == null)
+                return NotFound();
+
+            //validate user fields
+            var msgs = new List<string>();
+            if (customer.UserName.IsNullOrEmpty())
+                msgs.Add("Username is required.");  
+
+            if (customer.FirstName.IsNullOrEmpty())
+                msgs.Add("First Name is required.");
+
+            if (customer.LastName.IsNullOrEmpty())
+                msgs.Add("Last Name is required.");
+
+            if (customer.Email.IsNullOrEmpty())
+                msgs.Add("Email is required.");
+
+            if (customer.PhoneNumber.IsNullOrEmpty())
+                msgs.Add("Phone Number is required.");
+
+            if (customer.Address1.IsNullOrEmpty())
+                msgs.Add("Address is required.");
+
+            if (customer.City.IsNullOrEmpty())
+                msgs.Add("City is required.");
+
+            if (customer.StateLocationId == 0)   
+                msgs.Add("State is required.");
+
+            if (customer.PostalCode.IsNullOrEmpty())
+                msgs.Add("Postal Code is required.");
+
+            if (msgs.Count > 0)                
+            {
+                var msg = "All fields are required.";
+                msgs.Insert(0, msg);
+                var customError = new
+                {
+                    Message = msg,
+                    Errors = msgs // Initialize the Errors list
+                };
+                return BadRequest(customError);
+            }
+
+
+            if (customer.Id.IsNullOrEmpty())
+            {
+                customer.UserName = customer.UserName.ToLower();
+
+                if (await _context.Users.AnyAsync(u => u.UserName == customer.UserName))
+                {
+                    var msg = "Username already exists.";
+                    var customError = new
+                    {
+                        Message = msg,
+                        Errors = new List<string> { msg }// Initialize the Errors list
+                    };
+                    return BadRequest();
+                }
+                                
+                var user = new ApplicationUser
+                {
+                    UserName = customer.UserName,
+                    NormalizedUserName = customer.UserName.ToUpper(),
+                    FirstName = customer.FirstName,
+                    LastName = customer.LastName,
+                    Email = customer.Email,
+                    NormalizedEmail = customer.Email.ToUpper(),
+                    PhoneNumber = customer.PhoneNumber,
+                    Address1 = customer.Address1,
+                    Address2 = customer.Address2,
+                    City = customer.City,
+                    StateLocationId = customer.StateLocationId,
+                    PostalCode = customer.PostalCode,
+                    EmailConfirmed = true,
+                    PhoneNumberConfirmed = true,
+                    SecurityStamp = Guid.NewGuid().ToString("D"),
+                };
+
+                var hasher = new PasswordHasher<IdentityUser>();
+                user.PasswordHash = hasher.HashPassword(user, "password");
+
+
+                UserStore<IdentityUser> userStore = new UserStore<IdentityUser>(_context);
+                await userStore.CreateAsync(user);
+                await userStore.AddToRoleAsync(user, "CUSTOMER");
+                customer.Id = user.Id;
+                return customer;
+            }
+            else
+            {
+                var existingUser = await _userManager.FindByIdAsync(customer.Id);
+
+                if (existingUser == null)
+                {
+                    var msg = "User not found.";
+                    var customError = new
+                    {
+                        Message = msg,
+                        Errors = new List<string> { msg }// Initialize the Errors list
+                    };
+                    return BadRequest();
+                }
+
+                customer.UserName = customer.UserName.ToLower();
+
+                if (await _context.Users.AnyAsync(u => u.UserName == customer.UserName))
+                {
+                    var msg = "Username already exists.";
+                    var customError = new
+                    {
+                        Message = msg,
+                        Errors = new List<string> { msg }// Initialize the Errors list
+                    };
+                    return BadRequest();
+                }
+
+                existingUser.UserName = customer.UserName;
+                existingUser.FirstName = customer.FirstName;
+                existingUser.LastName = customer.LastName;
+                existingUser.Email = customer.Email;
+                existingUser.NormalizedEmail = customer.Email.ToUpper();
+                existingUser.PhoneNumber = customer.PhoneNumber;
+                existingUser.Address1 = customer.Address1;
+                existingUser.Address2 = customer.Address2;
+                existingUser.City = customer.City;
+                existingUser.StateLocationId = customer.StateLocationId;
+                existingUser.PostalCode = customer.PostalCode;
+
+                await _userManager.UpdateAsync(existingUser);
+                return customer;
+            }
         }
 
         [HttpGet]
