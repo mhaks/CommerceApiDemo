@@ -307,7 +307,7 @@ namespace CommerceApiDemo.Controllers
                     Message = msg,
                     Errors = new List<string> { msg }// Initialize the Errors list
                 };
-                return BadRequest();
+                return BadRequest(customError);
             }
 
 
@@ -475,8 +475,7 @@ namespace CommerceApiDemo.Controllers
                 }
 
                 customer.UserName = customer.UserName.ToLower();
-
-                if (await _context.Users.AnyAsync(u => u.UserName == customer.UserName))
+                if (existingUser.UserName != customer.UserName && await _context.Users.AnyAsync(u => u.UserName == customer.UserName))
                 {
                     var msg = "Username already exists.";
                     var customError = new
@@ -484,8 +483,8 @@ namespace CommerceApiDemo.Controllers
                         Message = msg,
                         Errors = new List<string> { msg }// Initialize the Errors list
                     };
-                    return BadRequest();
-                }
+                    return BadRequest(customError);
+                }                
 
                 existingUser.UserName = customer.UserName;
                 existingUser.FirstName = customer.FirstName;
