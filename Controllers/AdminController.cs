@@ -1,12 +1,11 @@
 ﻿using CommerceApiDem.Data;
 using CommerceApiDem.Models;
-using CommerceApiDemo.DtoModels;
+using CommerceApiDemo.AdminDto;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using System.Net.Mail;
 
 namespace CommerceApiDemo.Controllers
 {
@@ -38,7 +37,7 @@ namespace CommerceApiDemo.Controllers
             var query = from o in _context.Order select o; ;
 
             var lookbackDate = DateTime.Now.AddDays(-Days).Date;
-            query = query.Where(o => o.OrderHistory.Any(h => h.OrderStatusId == (int)OrderState.Processing && h.OrderDate >= lookbackDate));
+            query = query.Where(o => o.OrderHistory.Any(h => h.OrderStatusId == (int)CommerceApiDem.Models.OrderState.Processing && h.OrderDate >= lookbackDate));
 
             var orders = await query
                             .Include(o => o.OrderProducts)
@@ -135,7 +134,7 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("OrderStates")]
-        public async Task<ActionResult<IEnumerable<OrderStatus>>> GetOrderStates()
+        public async Task<ActionResult<IEnumerable<AdminDto.OrderState>>> GetOrderStates()
         {
             if (_context == null || _context.OrderStatus == null)
                 return NotFound();
@@ -143,6 +142,7 @@ namespace CommerceApiDemo.Controllers
             return await _context.OrderStatus
                 .AsNoTracking()                
                 .OrderBy(x => x.Name)
+                .Select(x => new AdminDto.OrderState { Id = x.Id, Name = x.Name })
                 .ToListAsync();
         }
 
@@ -213,7 +213,7 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("Products")]
-        public async Task<ActionResult<IEnumerable<ProductDto>>> GetProducts()
+        public async Task<ActionResult<IEnumerable<ProductResponse>>> GetProducts()
         {
             if (_context == null || _context.Product == null)
                 return NotFound();
@@ -221,7 +221,7 @@ namespace CommerceApiDemo.Controllers
             var products = await _context.Product
                 .Include(p => p.ProductCategory)
                 .AsNoTracking()
-                .Select(p => new ProductDto
+                .Select(p => new ProductResponse
                 {
                     Id = p.Id,
                     Title = p.Title,
@@ -243,7 +243,7 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("Product/{id}")]
-        public async Task<ActionResult<ProductDto>> GetProduct(int id)
+        public async Task<ActionResult<ProductResponse>> GetProduct(int id)
         {
             if (_context == null || _context.Product == null)
                 return NotFound();
@@ -252,7 +252,7 @@ namespace CommerceApiDemo.Controllers
                 .Where(p => p.Id == id)
                 .Include(p => p.ProductCategory)
                 .AsNoTracking()
-                .Select(p => new ProductDto
+                .Select(p => new ProductResponse
                 {
                     Id = p.Id,
                     Title = p.Title,
@@ -368,7 +368,7 @@ namespace CommerceApiDemo.Controllers
 
         [HttpPut]
         [Route("Customer")]
-        public async Task<ActionResult<CustomerDto>> UpdateCustomer([FromForm] CustomerDto customer)
+        public async Task<ActionResult<Customer>> UpdateCustomer([FromForm] Customer customer)
         {
             if (_context == null || _context.Users == null)
                 return NotFound();

@@ -1,6 +1,6 @@
-﻿namespace CommerceApiDemo.DtoModels
+﻿namespace CommerceApiDemo.AdminDto
 {
-    public class CustomerDto
+    public class Customer
     {
         public string Id { get; set; } = string.Empty;
         public string UserName { get; set; } = string.Empty;

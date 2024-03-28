@@ -1,6 +1,6 @@
-namespace CommerceApiDemo.DtoModels
+namespace CommerceApiDemo.AdminDto
 {
-    public record ProductDto
+    public class ProductResponse
     {
         public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
