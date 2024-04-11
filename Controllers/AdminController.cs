@@ -27,7 +27,7 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("SalesSummary")]
-        public async Task<ActionResult> SalesSummary(int Days)
+        public async Task<ActionResult<SalesSummaryResponse>> SalesSummary(int Days)
         {
             if (_context == null || _context.Order == null)
             {
@@ -49,7 +49,7 @@ namespace CommerceApiDemo.Controllers
                             .AsNoTracking()
                             .ToListAsync();
 
-            var result = new
+            var result = new SalesSummaryResponse
             {
                 OrderCount = orders.Count,
                 ProductCount = orders.Sum(o => o.OrderProducts.Count),
@@ -63,7 +63,7 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("OrderSummary")]
-        public async Task<ActionResult> OrderSummary(int? Days, int? Status)
+        public async Task<ActionResult<OrderSummaryResponse>> OrderSummary(int? Days, int? Status)
         {
             if (_context == null || _context.Order == null)
             {
@@ -94,7 +94,8 @@ namespace CommerceApiDemo.Controllers
 
 
 
-            var result = new  { 
+            var result = new OrderSummaryResponse
+            { 
                 OrderCount = orders.Count, 
                 ProductCount = orders.Sum(o => o.OrderProducts.Count()),
                 Revenue = orders.Sum(o => o.Subtotal)
@@ -106,7 +107,7 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("InventorySummary")]
-        public async Task<ActionResult> InventorySummary(int threshold)
+        public async Task<ActionResult<InventorySummaryResponse>> InventorySummary(int threshold)
         {
             if (_context == null || _context.Product == null)
             {
@@ -120,7 +121,7 @@ namespace CommerceApiDemo.Controllers
                             .AsNoTracking()
                             .ToListAsync();
 
-            var result = new
+            var result = new InventorySummaryResponse
             {
                 Active = products.Count(p => p.IsActive),
                 Inactive = products.Count(p => !p.IsActive),
@@ -148,7 +149,7 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("Orders")]
-        public async Task<ActionResult<IEnumerable<object>>> GetOrders()
+        public async Task<ActionResult<IEnumerable<OrdersResponse>>> GetOrders()
         {
             if (_context == null || _context.Order == null)
                 return NotFound();
@@ -159,7 +160,7 @@ namespace CommerceApiDemo.Controllers
                 .Include(c => c.User)
                 .ThenInclude(c => c.StateLocation)
                 .AsNoTracking()
-                .Select(o => new
+                .Select(o => new OrdersResponse
                 {
                     OrderId = o.Id,
                     UserName = o.User.UserName,
@@ -189,7 +190,7 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("Order/{id}")]
-        public async Task<ActionResult<Order>> GetOrder(int id)
+        public async Task<ActionResult<OrderResponse>> GetOrder(int id)
         {
             if (_context == null || _context.Order == null)
                 return NotFound();
@@ -197,6 +198,7 @@ namespace CommerceApiDemo.Controllers
             var order = await _context.Order
                 .Include(o => o.OrderProducts)
                 .ThenInclude(p => p.Product)
+                .ThenInclude(p => p.ProductCategory)
                 .Include(o => o.OrderHistory)
                 .ThenInclude(h => h.OrderStatus)
                 .Include(c => c.User)
@@ -207,7 +209,46 @@ namespace CommerceApiDemo.Controllers
             if (order == null)
                 return NotFound();
 
-            return order;
+            var result = new OrderResponse
+            {
+                Id = order.Id,
+                Subtotal = order.Subtotal,
+                Tax = order.Tax,
+                TotalPrice = order.TotalPrice,
+                Customer = new CustomerResponse
+                {
+                    Id = order.User.Id,
+                    UserName = order.User.UserName,
+                    FirstName = order.User.FirstName,
+                    LastName = order.User.LastName,
+                    Email = order.User.Email,
+                    PhoneNumber = order.User.PhoneNumber,
+                    Address1 = order.User.Address1,
+                    Address2 = order.User.Address2,
+                    City = order.User.City,
+                    StateLocationId = order.User.StateLocationId,
+                    StateLocation = order.User.StateLocation.Abbreviation,
+                    PostalCode = order.User.PostalCode
+                },
+                Products = order.OrderProducts.Select(p => new ProductResponse
+                {
+                    Id = p.Product.Id,
+                    Title = p.Product.Title,
+                    Description = p.Product.Description,
+                    Brand = p.Product.Brand,
+                    Model = p.Product.ModelNumber,
+                    Category = p.Product.ProductCategory.Title,
+                }).ToList<ProductResponse>(),
+                History = order.OrderHistory.Select(h => new OrderHistoryResponse
+                {
+                    Id = h.Id,
+                    OrderDate = h.OrderDate,
+                    OrderStatusId = h.OrderStatusId,
+                    OrderStatus = h.OrderStatus.Name                    
+                }).ToList<OrderHistoryResponse>(),
+            };
+
+            return Ok(result);
         }
 
 
@@ -368,7 +409,7 @@ namespace CommerceApiDemo.Controllers
 
         [HttpPut]
         [Route("Customer")]
-        public async Task<ActionResult<Customer>> UpdateCustomer([FromForm] Customer customer)
+        public async Task<ActionResult<CustomerResponse>> UpdateCustomer([FromForm] CustomerResponse customer)
         {
             if (_context == null || _context.Users == null)
                 return NotFound();
