@@ -36,8 +36,8 @@ namespace CommerceApiDemo.Controllers
 
 
         [HttpGet]
-        [Route("User")]
-        public async Task<ActionResult<CommerceUser>> GetUser()
+        [Route("Users/{id}")]
+        public async Task<ActionResult<CommerceUser>> GetUser(string id)
         {
             ApplicationUser? appUser = null;
             if (User.Identity == null || !User.Identity.IsAuthenticated)
@@ -70,7 +70,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpPut]
-        [Route("User")]
+        [Route("Users")]
         public async Task<ActionResult<CommerceUser>> SetUser([FromForm] string userName)
         {
             Debug.WriteLine($"SetUser {userName} logging in");

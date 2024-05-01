@@ -189,7 +189,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
-        [Route("Order/{id}")]
+        [Route("Orders/{id}")]
         public async Task<ActionResult<OrderResponse>> GetOrder(int id)
         {
             if (_context == null || _context.Order == null)
@@ -283,7 +283,7 @@ namespace CommerceApiDemo.Controllers
 
 
         [HttpGet]
-        [Route("Product/{id}")]
+        [Route("Products/{id}")]
         public async Task<ActionResult<ProductResponse>> GetProduct(int id)
         {
             if (_context == null || _context.Product == null)
@@ -316,7 +316,20 @@ namespace CommerceApiDemo.Controllers
 
 
         [HttpGet]
-        [Route("Category/{id}")]
+        [Route("Categories")]
+        public async Task<ActionResult<IEnumerable<ProductCategory>>> GetCategories()
+        {
+            if (_context == null || _context.ProductCategory == null)
+                return NotFound();
+
+            return await _context.ProductCategory
+                .AsNoTracking()
+                .OrderBy(x => x.Title)
+                .ToListAsync();
+        }
+
+        [HttpGet]
+        [Route("Categorys/{id}")]
         public async Task<ActionResult<ProductCategory>> GetCategory(int id)
         {
             if (_context == null || _context.ProductCategory == null)
@@ -334,7 +347,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpPut]
-        [Route("Category")]
+        [Route("Categorys")]
         public async Task<ActionResult<ProductCategory>> UpdateCategory([FromForm] ProductCategory category)
         {
             if (_context == null || _context.ProductCategory == null)
@@ -386,7 +399,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
-        [Route("Customer/{id}")]
+        [Route("Customers/{id}")]
         public async Task<ActionResult<ApplicationUser>> GetCustomer(string id)
         {
             if (_context == null || _context.Users == null)
@@ -408,7 +421,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpPut]
-        [Route("Customer")]
+        [Route("Customers")]
         public async Task<ActionResult<CustomerResponse>> UpdateCustomer([FromForm] CustomerResponse customer)
         {
             if (_context == null || _context.Users == null)
@@ -545,7 +558,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
-        [Route("States")]
+        [Route("StateLocations")]
         public async Task<ActionResult<IEnumerable<StateLocation>>> GetStates()
         {
             if (_context == null || _context.StateLocation == null)

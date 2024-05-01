@@ -80,7 +80,7 @@ namespace CommerceApiDemo.Controllers
 
 
         [HttpGet]
-        [Route("TopProducts")]
+        [Route("Products/TopSelling/{count}")]
         public async Task<ActionResult<IEnumerable<Product>>> GetTopProducts(int count = 4)
         {
             return  await _context.Product
@@ -90,8 +90,8 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
-        [Route("Search")]
-        public async Task<ActionResult<IEnumerable<Product>>> SearchProducts(string? searchString, int? categoryId)
+        [Route("Products/Search/")]
+        public async Task<ActionResult<IEnumerable<Product>>> GetProducts(string? searchString = null, int? categoryId = null)
         {
             Console.WriteLine($"Search: {searchString} - {categoryId}");
             if(_context == null || _context.Product == null)
@@ -120,10 +120,10 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
-        [Route("Product")]
-        public async Task<ActionResult<Product>> GetProduct(int? id)
+        [Route("Products/{id}")]
+        public async Task<ActionResult<Product>> GetProducts(int id)
         {
-            if (id == null || _context == null || _context.Product == null)
+            if ( _context == null || _context.Product == null)
             {
                 return NotFound();
             }
@@ -303,8 +303,8 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpPost]
-        [Route("Checkout")]
-        public async Task<ActionResult<int>> CheckoutOrder([FromForm] int orderId, [FromForm] string cardName, [FromForm] string cardNumber, [FromForm] string cardExpiration, [FromForm] string cardCVV)
+        [Route("Cart/Checkout")]
+        public async Task<ActionResult<int>> Checkout([FromForm] int orderId, [FromForm] string cardName, [FromForm] string cardNumber, [FromForm] string cardExpiration, [FromForm] string cardCVV)
         {
             if (_context == null || _context.Order == null)
                 return NotFound();
@@ -388,37 +388,8 @@ namespace CommerceApiDemo.Controllers
         #region Ordered
 
         [HttpGet]
-        [Route("Order")]
-        public async Task<ActionResult<Order>> GetOrder(int id)
-        {
-            if (_context == null || _context.Order == null)
-                return NotFound();
-
-            Initialize();
-            Debug.WriteLine($"GetOrder: {_userId}");
-
-            var order = await _context.Order
-                            .Where(o => o.Id == id && o.UserId == _userId)
-                            .Include(c => c.User)
-                            .ThenInclude(s => s.StateLocation)
-                            .Include(p => p.OrderProducts)
-                            .ThenInclude(p => p.Product)
-                            .Include(h => h.OrderHistory)
-                            .ThenInclude(s => s.OrderStatus)
-                            .AsNoTracking()
-                            .FirstOrDefaultAsync();
-
-            if (order == null)
-                return NotFound();
-
-            // don't need to show initial cart
-            order.OrderHistory.Remove(order.OrderHistory.First(h => h.OrderStatusId == (int)OrderState.Cart));
-            return order;
-        }
-
-        [HttpGet]
         [Route("Orders")]
-        public async Task<ActionResult<IEnumerable<Order>>> GetOrders(int? statusId)
+        public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
         {
             if (_context == null || _context.Order == null)
                 return NotFound();
@@ -447,9 +418,6 @@ namespace CommerceApiDemo.Controllers
                     removes.Add(order);
                     break;
                 }
-
-                if (statusId.HasValue && history.OrderStatusId != statusId)
-                    removes.Add(order);
             }
 
             foreach (var item in removes)
@@ -458,7 +426,40 @@ namespace CommerceApiDemo.Controllers
             return orders;
         }
 
+        [HttpGet]
+        [Route("Orders/{id}")]
+        public async Task<ActionResult<Order>> GetOrder(int id)
+        {
+            if (_context == null || _context.Order == null)
+                return NotFound();
 
+            Initialize();
+            Debug.WriteLine($"GetOrder: {_userId}");
+
+            var order = await _context.Order
+                        .Where(o => o.Id == id && o.UserId == _userId)
+                        .Include(c => c.User)
+                        .ThenInclude(s => s.StateLocation)
+                        .Include(p => p.OrderProducts)
+                        .ThenInclude(p => p.Product)
+                        .Include(h => h.OrderHistory)
+                        .ThenInclude(s => s.OrderStatus)
+                        .OrderByDescending(o => o.OrderHistory.First().OrderDate)
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync();
+
+
+
+
+            if (order == null)
+                return NotFound();
+
+            // don't need to show initial cart
+            order.OrderHistory.Remove(order.OrderHistory.First(h => h.OrderStatusId == (int)OrderState.Cart));
+
+            return Ok(order);
+        }
+        
         [HttpGet]
         [Route("OrderStatuses")]
         public async Task<ActionResult<IEnumerable<OrderStatus>>> GetOrderStatuses()
@@ -472,8 +473,8 @@ namespace CommerceApiDemo.Controllers
                 .OrderBy(x => x.Name)
                 .ToListAsync();
         }   
-        #endregion
 
+        #endregion
 
     }
 }
