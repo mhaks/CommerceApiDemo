@@ -399,12 +399,13 @@ namespace CommerceApiDemo.Controllers
 
             var orders = await _context.Order
                             .Where(o => o.UserId == _userId)
-                            .Include(p => p.OrderProducts)
-                            .Include(h => h.OrderHistory)
-                            .ThenInclude(s => s.OrderStatus)
                             .Include(c => c.User)
                             .ThenInclude(s => s.StateLocation)
-                            .OrderByDescending(o => o.OrderHistory.First().OrderDate)
+                            .Include(p => p.OrderProducts)
+                            .ThenInclude(p => p.Product)
+                            .Include(h => h.OrderHistory)
+                            .ThenInclude(s => s.OrderStatus)
+                            .OrderByDescending(o => o.Id)
                             .AsNoTracking()
                             .ToListAsync();
 
@@ -444,12 +445,9 @@ namespace CommerceApiDemo.Controllers
                         .ThenInclude(p => p.Product)
                         .Include(h => h.OrderHistory)
                         .ThenInclude(s => s.OrderStatus)
-                        .OrderByDescending(o => o.OrderHistory.First().OrderDate)
+                        .OrderByDescending(o => o.Id)
                         .AsNoTracking()
                         .FirstOrDefaultAsync();
-
-
-
 
             if (order == null)
                 return NotFound();
