@@ -510,6 +510,7 @@ namespace CommerceApiDemo.Controllers
                 UserStore<IdentityUser> userStore = new UserStore<IdentityUser>(_context);
                 await userStore.CreateAsync(user);
                 await userStore.AddToRoleAsync(user, "CUSTOMER");
+                await userStore.Context.SaveChangesAsync();
                 customer.Id = user.Id;
                 return customer;
             }
