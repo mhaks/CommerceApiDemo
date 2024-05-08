@@ -329,7 +329,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
-        [Route("Categorys/{id}")]
+        [Route("Categories/{id}")]
         public async Task<ActionResult<ProductCategory>> GetCategory(int id)
         {
             if (_context == null || _context.ProductCategory == null)
@@ -347,7 +347,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpPut]
-        [Route("Categorys")]
+        [Route("Categories")]
         public async Task<ActionResult<ProductCategory>> UpdateCategory([FromForm] ProductCategory category)
         {
             if (_context == null || _context.ProductCategory == null)
