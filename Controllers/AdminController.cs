@@ -218,17 +218,17 @@ namespace CommerceApiDemo.Controllers
                 Customer = new CustomerResponse
                 {
                     Id = order.User.Id,
-                    UserName = order.User.UserName,
-                    FirstName = order.User.FirstName,
-                    LastName = order.User.LastName,
-                    Email = order.User.Email,
-                    PhoneNumber = order.User.PhoneNumber,
-                    Address1 = order.User.Address1,
-                    Address2 = order.User.Address2,
-                    City = order.User.City,
-                    StateLocationId = order.User.StateLocationId,
-                    StateLocation = order.User.StateLocation.Abbreviation,
-                    PostalCode = order.User.PostalCode
+                    UserName = order.User?.UserName ?? string.Empty,
+                    FirstName = order.User?.FirstName ?? string.Empty,
+                    LastName = order.User?.LastName ?? string.Empty,
+                    Email = order.User?.Email ?? string.Empty,
+                    PhoneNumber = order.User?.PhoneNumber ?? string.Empty,
+                    Address1 = order.User?.Address1 ?? string.Empty,
+                    Address2 = order.User?.Address2 ?? string.Empty,
+                    City = order.User?.City ?? string.Empty,
+                    StateLocationId = order.User?.StateLocationId ?? 1,
+                    StateLocation = order.User?.StateLocation.Abbreviation ?? string.Empty,
+                    PostalCode = order.User?.PostalCode ?? string.Empty
                 },
                 Products = order.OrderProducts.Select(p => new ProductResponse
                 {
@@ -314,6 +314,97 @@ namespace CommerceApiDemo.Controllers
                 return product;
         }
 
+        [HttpPut]
+        [Route("Products")]
+        public async Task<ActionResult<ProductResponse>> UpdateProduct([FromForm] ProductRequest product)
+        {
+            if (_context == null || _context.Product == null)
+                return NotFound();
+
+            //validate user fields
+            var msgs = new List<string>();
+
+            if (product.Title.IsNullOrEmpty())
+                msgs.Add("Product title is required.");
+                
+            if (product.CategoryId == 0)
+                msgs.Add("Category is required.");               
+
+            if (product.Price <= 0)
+                msgs.Add("Price must be greater than zero.");
+            
+            if (product.AvailableQty < 0)
+                msgs.Add("Available quantity must be zero or greater.");
+                
+            if (msgs.Count > 0)
+                msgs.Add("All fields are required.");
+
+            if (msgs.Count > 0)
+            {
+                var msg = "All fields are required.";
+                msgs.Insert(0, msg);
+                var customError = new
+                {
+                    Message = msg,
+                    Errors = msgs // Initialize the Errors list
+                };
+                return BadRequest(customError);
+            }
+
+
+            if (!product.Id.HasValue)
+            {
+                var newProduct = new Product
+                {
+                    Title = product.Title,
+                    Description = product.Description,
+                    Brand = product.Brand,
+                    ModelNumber = product.Model,
+                    ProductCategoryId = product.CategoryId,
+                    Price = product.Price,
+                    AvailableQty = product.AvailableQty,
+                    IsActive = product.IsActive
+                };
+
+                _context.Add(newProduct);
+                await _context.SaveChangesAsync();
+                product.Id = newProduct.Id;
+            }
+            else
+            {
+                var existingProduct = await _context.Product.FindAsync(product.Id);
+
+                if (existingProduct == null)
+                    return NotFound();
+
+                existingProduct.Title = product.Title;
+                existingProduct.Description = product.Description;
+                existingProduct.Brand = product.Brand;
+                existingProduct.ModelNumber = product.Model;
+                existingProduct.ProductCategoryId = product.CategoryId;
+                existingProduct.Price = product.Price;
+                existingProduct.AvailableQty = product.AvailableQty;
+                existingProduct.IsActive = product.IsActive;
+
+                _context.Update(existingProduct);
+                await _context.SaveChangesAsync();
+            }
+
+            return new ProductResponse
+            {
+                Id = product.Id.Value,
+                Title = product.Title,
+                Description = product.Description,
+                Brand = product.Brand,
+                Model = product.Model,
+                CategoryId = product.CategoryId,
+                Category = _context.ProductCategory.Find(product.CategoryId)?.Title ?? string.Empty,
+                Price = product.Price,
+                AvailableQty = product.AvailableQty,
+                IsActive = product.IsActive
+            };
+        }
+
 
         [HttpGet]
         [Route("Categories")]
@@ -378,7 +469,22 @@ namespace CommerceApiDemo.Controllers
 
             return category;
         }
-        
+
+        [HttpGet]
+        [Route("Brands")]
+        public async Task<ActionResult<IEnumerable<string>>> GetBrands()
+        {
+            if (_context == null || _context.Product == null)
+                return NotFound();
+
+            return await _context.Product
+                .AsNoTracking()
+                .Select(x => x.Brand)
+                .Distinct()
+                .OrderBy(x => x)
+                .ToListAsync();
+        }
+
 
         [HttpGet]
         [Route("Customers")]
@@ -422,7 +528,7 @@ namespace CommerceApiDemo.Controllers
 
         [HttpPut]
         [Route("Customers")]
-        public async Task<ActionResult<CustomerResponse>> UpdateCustomer([FromForm] CustomerResponse customer)
+        public async Task<ActionResult<CustomerResponse>> UpdateCustomer([FromForm] CustomerRequest customer)
         {
             if (_context == null || _context.Users == null)
                 return NotFound();
@@ -450,7 +556,8 @@ namespace CommerceApiDemo.Controllers
             if (customer.City.IsNullOrEmpty())
                 msgs.Add("City is required.");
 
-            if (customer.StateLocationId == 0)   
+            var stateLocation = await _context.StateLocation.FindAsync(customer.StateLocationId);
+            if (customer.StateLocationId == 0 || stateLocation == null)   
                 msgs.Add("State is required.");
 
             if (customer.PostalCode.IsNullOrEmpty())
@@ -469,7 +576,8 @@ namespace CommerceApiDemo.Controllers
             }
 
 
-            if (customer.Id.IsNullOrEmpty())
+            ApplicationUser user;
+            if (string.IsNullOrEmpty(customer?.Id))
             {
                 customer.UserName = customer.UserName.ToLower();
 
@@ -481,10 +589,10 @@ namespace CommerceApiDemo.Controllers
                         Message = msg,
                         Errors = new List<string> { msg }// Initialize the Errors list
                     };
-                    return BadRequest();
+                    return BadRequest(customError);
                 }
                                 
-                var user = new ApplicationUser
+                user = new ApplicationUser
                 {
                     UserName = customer.UserName,
                     NormalizedUserName = customer.UserName.ToUpper(),
@@ -506,31 +614,28 @@ namespace CommerceApiDemo.Controllers
                 var hasher = new PasswordHasher<IdentityUser>();
                 user.PasswordHash = hasher.HashPassword(user, "password");
 
-
                 UserStore<IdentityUser> userStore = new UserStore<IdentityUser>(_context);
                 await userStore.CreateAsync(user);
                 await userStore.AddToRoleAsync(user, "CUSTOMER");
                 await userStore.Context.SaveChangesAsync();
-                customer.Id = user.Id;
-                return customer;
             }
             else
             {
-                var existingUser = await _userManager.FindByIdAsync(customer.Id);
+                user = await _userManager.FindByIdAsync(customer.Id);
 
-                if (existingUser == null)
+                if (user == null || customer == null)
                 {
                     var msg = "User not found.";
                     var customError = new
                     {
                         Message = msg,
-                        Errors = new List<string> { msg }// Initialize the Errors list
+                        Errors = new List<string> { msg }
                     };
-                    return BadRequest();
+                    return BadRequest(customError);
                 }
 
                 customer.UserName = customer.UserName.ToLower();
-                if (existingUser.UserName != customer.UserName && await _context.Users.AnyAsync(u => u.UserName == customer.UserName))
+                if (user.UserName != customer.UserName && await _context.Users.AnyAsync(u => u.UserName == customer.UserName))
                 {
                     var msg = "Username already exists.";
                     var customError = new
@@ -539,23 +644,39 @@ namespace CommerceApiDemo.Controllers
                         Errors = new List<string> { msg }// Initialize the Errors list
                     };
                     return BadRequest(customError);
-                }                
+                }
 
-                existingUser.UserName = customer.UserName;
-                existingUser.FirstName = customer.FirstName;
-                existingUser.LastName = customer.LastName;
-                existingUser.Email = customer.Email;
-                existingUser.NormalizedEmail = customer.Email.ToUpper();
-                existingUser.PhoneNumber = customer.PhoneNumber;
-                existingUser.Address1 = customer.Address1;
-                existingUser.Address2 = customer.Address2;
-                existingUser.City = customer.City;
-                existingUser.StateLocationId = customer.StateLocationId;
-                existingUser.PostalCode = customer.PostalCode;
+                user.UserName = customer.UserName;
+                user.FirstName = customer.FirstName;
+                user.LastName = customer.LastName;
+                user.Email = customer.Email;
+                user.NormalizedEmail = customer.Email.ToUpper();
+                user.PhoneNumber = customer.PhoneNumber;
+                user.Address1 = customer.Address1;
+                user.Address2 = customer.Address2;
+                user.City = customer.City;
+                user.StateLocationId = customer.StateLocationId;
+                user.PostalCode = customer.PostalCode;
 
-                await _userManager.UpdateAsync(existingUser);
-                return customer;
+                await _userManager.UpdateAsync(user);
+                
             }
+
+            return new CustomerResponse
+            {
+                Id = user.Id,
+                UserName = user.UserName,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber,
+                Address1 = user.Address1,
+                Address2 = user.Address2 ?? String.Empty,
+                City = user.City,
+                StateLocationId = user.StateLocationId,
+                StateLocation = stateLocation?.Abbreviation ?? string.Empty,
+                PostalCode = user.PostalCode
+            };
         }
 
         [HttpGet]
