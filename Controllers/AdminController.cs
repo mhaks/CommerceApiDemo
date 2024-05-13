@@ -251,6 +251,38 @@ namespace CommerceApiDemo.Controllers
             return Ok(result);
         }
 
+        [HttpPut]
+        [Route("Orders/{orderId}/State/{stateId}")]
+        public async Task<ActionResult<OrderResponse>> UpdateOrderState(int orderId, int stateId)
+        {
+            if (_context == null || _context.Order == null)
+                return NotFound();
+
+            var order = await _context.Order
+                .Include(o => o.OrderHistory)
+                .FirstOrDefaultAsync(o => o.Id == orderId);
+
+            if (order == null)
+                return NotFound();
+
+            var newState = await _context.OrderStatus.FindAsync(stateId);
+
+            if (newState == null)
+                return NotFound();
+
+            var newHistory = new OrderHistory
+            {
+                OrderId = order.Id,
+                OrderStatusId = stateId,
+                OrderDate = DateTime.UtcNow  
+            };
+
+            _context.Add(newHistory);
+            await _context.SaveChangesAsync();
+
+            return await GetOrder(orderId);
+        }
+
 
         [HttpGet]
         [Route("Products")]
