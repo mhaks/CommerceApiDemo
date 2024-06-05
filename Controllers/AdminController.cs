@@ -297,12 +297,26 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("Products")]
-        public async Task<ActionResult<IEnumerable<ProductResponse>>> GetProducts()
+        public async Task<ActionResult<IEnumerable<ProductResponse>>> GetProducts(string? search, string? brand, int? categoryId, bool? isActive)
         {
             if (_context == null || _context.Product == null)
                 return NotFound();
 
-            var products = await _context.Product
+            var query = _context.Product.Select(p => p);
+
+            if (!string.IsNullOrEmpty(search))
+                query = query.Where(p => p.Title.Contains(search));
+
+            if (!string.IsNullOrEmpty(brand))
+                query = query.Where(p => p.Brand == brand);
+
+            if (categoryId.HasValue)
+                query = query.Where(p => p.ProductCategoryId == categoryId);
+
+            if (isActive.HasValue)
+                query = query.Where(p => p.IsActive == isActive);
+
+            var products = await query
                 .Include(p => p.ProductCategory)
                 .AsNoTracking()
                 .Select(p => new ProductResponse
