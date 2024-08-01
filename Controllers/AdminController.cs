@@ -26,7 +26,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
-        [Route("SalesSummary")]
+        [Route("Summary/Sales")]
         public async Task<ActionResult<SalesSummaryResponse>> SalesSummary(int Days)
         {
             if (_context == null || _context.Order == null)
@@ -62,7 +62,7 @@ namespace CommerceApiDemo.Controllers
 
 
         [HttpGet]
-        [Route("OrderSummary")]
+        [Route("Summary/Orders")]
         public async Task<ActionResult<OrderSummaryResponse>> OrderSummary(int? Days, int? Status)
         {
             if (_context == null || _context.Order == null)
@@ -106,7 +106,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
-        [Route("InventorySummary")]
+        [Route("Summary/Inventory")]
         public async Task<ActionResult<InventorySummaryResponse>> InventorySummary(int threshold)
         {
             if (_context == null || _context.Product == null)
