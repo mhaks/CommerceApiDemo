@@ -134,7 +134,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
-        [Route("OrderStates")]
+        [Route("Orders/States")]
         public async Task<ActionResult<IEnumerable<AdminDto.OrderState>>> GetOrderStates()
         {
             if (_context == null || _context.OrderStatus == null)
@@ -464,7 +464,7 @@ namespace CommerceApiDemo.Controllers
 
 
         [HttpGet]
-        [Route("Categories")]
+        [Route("Products/Categories")]
         public async Task<ActionResult<IEnumerable<ProductCategory>>> GetCategories()
         {
             if (_context == null || _context.ProductCategory == null)
@@ -477,7 +477,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
-        [Route("Categories/{id}")]
+        [Route("Products/Categories/{id}")]
         public async Task<ActionResult<ProductCategory>> GetCategory(int id)
         {
             if (_context == null || _context.ProductCategory == null)
@@ -495,7 +495,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpPut]
-        [Route("Categories")]
+        [Route("Products/Categories")]
         public async Task<ActionResult<ProductCategory>> UpdateCategory([FromForm] ProductCategory category)
         {
             if (_context == null || _context.ProductCategory == null)
@@ -528,7 +528,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
-        [Route("Brands")]
+        [Route("Products/Brands")]
         public async Task<ActionResult<IEnumerable<string>>> GetBrands()
         {
             if (_context == null || _context.Product == null)
@@ -737,7 +737,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
-        [Route("StateLocations")]
+        [Route("UnitedStates")]
         public async Task<ActionResult<IEnumerable<StateLocation>>> GetStates()
         {
             if (_context == null || _context.StateLocation == null)
