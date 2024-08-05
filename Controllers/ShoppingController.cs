@@ -46,7 +46,7 @@ namespace CommerceApiDemo.Controllers
 
         //[Authorize]
         [HttpGet]
-        [Route("Categories")]
+        [Route("Products/Categories")]
         public async Task<ActionResult<IEnumerable<ProductCategory>>> GetProductCategories()
         {
             if (_context == null || _context.ProductCategory == null)
@@ -61,26 +61,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpGet]
-        [Route("Brands")]
-        public async Task<ActionResult<IEnumerable<string>>> GetProductBrands()
-        {
-            if (_context == null || _context.Product == null)
-            {
-                return new List<string>();
-            }
-
-            return await _context.Product
-                .AsNoTracking()
-                .Where(x => x.IsActive)
-                .Select(x => x.Brand)
-                .Distinct()
-                .OrderBy(x => x)
-                .ToListAsync();
-        }   
-
-
-        [HttpGet]
-        [Route("Products/TopSelling/{count}")]
+        [Route("Products/Sales/{count}")]
         public async Task<ActionResult<IEnumerable<Product>>> GetTopProducts(int count = 4)
         {
             return  await _context.Product
@@ -459,7 +440,7 @@ namespace CommerceApiDemo.Controllers
         }
         
         [HttpGet]
-        [Route("OrderStatuses")]
+        [Route("Orders/States")]
         public async Task<ActionResult<IEnumerable<OrderStatus>>> GetOrderStatuses()
         {
             if (_context == null || _context.OrderStatus == null)
