@@ -465,12 +465,16 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("Products/Categories")]
-        public async Task<ActionResult<IEnumerable<ProductCategory>>> GetCategories()
+        public async Task<ActionResult<IEnumerable<ProductCategory>>> GetCategories(string? search)
         {
             if (_context == null || _context.ProductCategory == null)
                 return NotFound();
 
-            return await _context.ProductCategory
+            var query = _context.ProductCategory.Select(c => c);
+            if (!string.IsNullOrEmpty(search))
+                query = query.Where(c => c.Title.Contains(search));
+
+            return await query
                 .AsNoTracking()
                 .OrderBy(x => x.Title)
                 .ToListAsync();
