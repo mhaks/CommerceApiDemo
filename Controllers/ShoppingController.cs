@@ -180,8 +180,8 @@ namespace CommerceApiDemo.Controllers
             return order;
         }
 
-        [HttpPut]
-        [Route("Cart/Add")]
+        [HttpPost]
+        [Route("Cart")]
         public async Task<ActionResult<int>> AddCartProduct([FromForm] int productId, [FromForm] int quantity)
         {
             
@@ -237,7 +237,7 @@ namespace CommerceApiDemo.Controllers
         }
 
         [HttpPut]
-        [Route("Cart/Edit")]
+        [Route("Cart")]
         public async Task<ActionResult<int>> EditCartProduct([FromForm] int orderId, [FromForm] int orderProductId, [FromForm] int quantity, [FromForm] string action)
         {
             if (_context == null || _context.Order == null)
