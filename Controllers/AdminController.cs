@@ -549,17 +549,21 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("Customers")]
-        public async Task<ActionResult<IEnumerable<ApplicationUser>>> GetCustomers()
+        public async Task<ActionResult<IEnumerable<ApplicationUser>>> GetCustomers(string? search)
         {
             if (_context == null || _context.Users == null)
                 return NotFound();
 
             var customers = await _userManager.GetUsersInRoleAsync("CUSTOMER");
 
-            var query = from c in customers 
+            var query = from c in customers
                         join st in _context.StateLocation on c.StateLocationId equals st.Id
                         select c;
 
+            if (!string.IsNullOrEmpty(search))
+                query = query.Where(c => c.UserName.Contains(search) || c.FirstName.Contains(search) || c.LastName.Contains(search));
+
+            
             var users = query.OrderBy(c => c.LastName).ThenBy(c => c.FirstName).ToList();
  
             return Ok(users);
