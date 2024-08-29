@@ -66,7 +66,12 @@ namespace CommerceApiDemo.Controllers
             if (appUser == null)
                 return NotFound();
 
-            return new CommerceUser(appUser, User.Identity.IsAuthenticated, User.IsInRole("ADMIN"));
+            return new CommerceUser(
+                             appUser,
+                             User.Identity?.IsAuthenticated ?? false,
+                             User.Identity != null && User.IsInRole("ADMIN")
+                         );
+
         }
 
         [HttpPut]
@@ -88,7 +93,12 @@ namespace CommerceApiDemo.Controllers
             await _signInManager.SignInAsync(appUser, isPersistent: false);
             Debug.WriteLine($"SetUser {userName} logged in");
 
-            return new CommerceUser(appUser, User.Identity.IsAuthenticated, User.IsInRole("ADMIN"));
+            return new CommerceUser(
+                                    appUser,
+                                    User.Identity?.IsAuthenticated ?? false,
+                                    User.Identity != null && User.IsInRole("ADMIN")
+                                );
+
         }
 
 

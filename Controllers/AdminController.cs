@@ -561,7 +561,7 @@ namespace CommerceApiDemo.Controllers
                         select c;
 
             if (!string.IsNullOrEmpty(search))
-                query = query.Where(c => c.UserName.Contains(search) || c.FirstName.Contains(search) || c.LastName.Contains(search));
+                query = query.Where(c => (c.UserName != null && c.UserName.Contains(search)) || c.FirstName.Contains(search) || c.LastName.Contains(search));
 
             
             var users = query.OrderBy(c => c.LastName).ThenBy(c => c.FirstName).ToList();
@@ -597,6 +597,17 @@ namespace CommerceApiDemo.Controllers
         {
             if (_context == null || _context.Users == null)
                 return NotFound();
+
+            if (customer == null)
+            {
+                var msg = "Customer data is required.";
+                var customError = new
+                {
+                    Message = msg,
+                    Errors = new List<string> { msg }
+                };
+                return BadRequest(customError);
+            }
 
             //validate user fields
             var msgs = new List<string>();
@@ -642,9 +653,11 @@ namespace CommerceApiDemo.Controllers
 
 
             ApplicationUser user;
-            if (string.IsNullOrEmpty(customer?.Id))
+            if (string.IsNullOrEmpty(customer.Id))
             {
-                customer.UserName = customer.UserName.ToLower();
+                if (!string.IsNullOrEmpty(customer.UserName))
+                    customer.UserName = customer.UserName.ToLower();
+                
 
                 if (await _context.Users.AnyAsync(u => u.UserName == customer.UserName))
                 {
@@ -686,9 +699,12 @@ namespace CommerceApiDemo.Controllers
             }
             else
             {
+               if (_userManager == null)
+                    return BadRequest();
+
                 user = await _userManager.FindByIdAsync(customer.Id);
 
-                if (user == null || customer == null)
+                if (user == null)
                 {
                     var msg = "User not found.";
                     var customError = new
