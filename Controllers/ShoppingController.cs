@@ -39,7 +39,8 @@ namespace CommerceApiDemo.Controllers
         private void Initialize()
         {
             //_userId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
-            _userId = "4151283c-1311-4340-af4b-7862b384a330";
+            //_userId = "4151283c-1311-4340-af4b-7862b384a330";
+            _userId = "jerry";
         }
        
 
@@ -260,7 +261,7 @@ namespace CommerceApiDemo.Controllers
          
 
             var order = await _context.Order
-                .Where(o => o.Id == orderId && o.UserId == _userId)
+                .Where(o => o.Id == orderId && o.User.UserName == _userId)
                 .Include(p => p.OrderProducts)
                 .ThenInclude(p => p.Product)
                 .Include(h => h.OrderHistory)
@@ -288,7 +289,7 @@ namespace CommerceApiDemo.Controllers
         async Task<CommerceApiDem.Models.Order> GetCartOrder()
         {
             var order = await _context.Order
-                .Where(c => c.UserId == _userId)
+                .Where(c => c.User.UserName == _userId)
                 .Include(c => c.User)
                 .ThenInclude(c => c.StateLocation)
                 .Include(c => c.OrderProducts)
@@ -300,14 +301,14 @@ namespace CommerceApiDemo.Controllers
 
             if (order == null || order.OrderHistory == null || !order.OrderHistory.Any())
             {
-                var user = await _context.Users.Where(x => x.Id == _userId).Include(c => c.StateLocation).FirstAsync();
+                var user = await _context.Users.Where(x => x.UserName == _userId).Include(c => c.StateLocation).FirstAsync();
                 return new CommerceApiDem.Models.Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>(), UserId = user.Id, User = user};
             }
 
             var history = order.OrderHistory.OrderBy(x => x.OrderDate).LastOrDefault();
             if (history == null || history.OrderStatusId != (int)OrderState.Cart)
             {
-                var user = await _context.Users.Where(x => x.Id == _userId).Include(c => c.StateLocation).FirstAsync();
+                var user = await _context.Users.Where(x => x.UserName == _userId).Include(c => c.StateLocation).FirstAsync();
                 return new CommerceApiDem.Models.Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>(), UserId = user.Id, User = user };
             };
 
@@ -331,7 +332,7 @@ namespace CommerceApiDemo.Controllers
             Debug.WriteLine($"GetOrders: {_userId}");
 
             var orders = await _context.Order
-                            .Where(o => o.UserId == _userId)
+                            .Where(o => o.User.UserName == _userId)
                             .Include(c => c.User)
                             .ThenInclude(s => s.StateLocation)
                             .Include(p => p.OrderProducts)
@@ -380,7 +381,7 @@ namespace CommerceApiDemo.Controllers
             Debug.WriteLine($"GetOrder: {_userId}");
 
             var order = await _context.Order
-                        .Where(o => o.Id == id && o.UserId == _userId)
+                        .Where(o => o.Id == id && o.User.UserName == _userId)
                         .Include(c => c.User)
                         .ThenInclude(s => s.StateLocation)
                         .Include(p => p.OrderProducts)
