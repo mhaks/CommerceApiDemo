@@ -149,7 +149,7 @@ namespace CommerceApiDemo.Controllers
 
         [HttpGet]
         [Route("Orders")]
-        public async Task<ActionResult<IEnumerable<OrdersResponse>>> GetOrders(int? orderId, string? customerId, int? statusId)
+        public async Task<ActionResult<IEnumerable<OrdersResponse>>> GetOrders(int? orderId, string? userName, int? statusId)
         {
             if (_context == null || _context.Order == null)
                 return NotFound();
@@ -159,8 +159,8 @@ namespace CommerceApiDemo.Controllers
             if (orderId.HasValue)
                 query = query.Where(o => o.Id == orderId);
 
-            if (!string.IsNullOrEmpty(customerId))
-                query = query.Where(o => o.UserId == customerId);
+            if (!string.IsNullOrEmpty(userName))
+                query = query.Where(o => o.User.UserName == userName);
 
             if (statusId.HasValue)
                 query = query.Where(o => o.OrderHistory.OrderByDescending(h => h.OrderDate).First().OrderStatusId == statusId);
