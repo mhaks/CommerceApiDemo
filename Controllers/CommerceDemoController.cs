@@ -29,7 +29,7 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Users == null)
                 return NotFound();
 
-            var query = from u in _context.Users orderby u.UserName select new CommerceUser(u, null, null);
+            var query = from u in _context.Users orderby u.UserName select new CommerceUser(u, u.UserName == "administrator");
 
             return await query.ToListAsync();
         }
@@ -67,8 +67,7 @@ namespace CommerceApiDemo.Controllers
                 return NotFound();
 
             return new CommerceUser(
-                             appUser,
-                             User.Identity?.IsAuthenticated ?? false,
+                             appUser,                             
                              User.Identity != null && User.IsInRole("ADMIN")
                          );
 
@@ -95,7 +94,6 @@ namespace CommerceApiDemo.Controllers
 
             return new CommerceUser(
                                     appUser,
-                                    User.Identity?.IsAuthenticated ?? false,
                                     User.Identity != null && User.IsInRole("ADMIN")
                                 );
 
@@ -104,23 +102,37 @@ namespace CommerceApiDemo.Controllers
 
         public class CommerceUser
         {
-            public CommerceUser(ApplicationUser user, bool? isAuthenticated, bool? isAdministrator)
+            public CommerceUser(ApplicationUser user, bool isAdministrator)
             {
                 FirstName = user.FirstName;
-                LastName = user.LastName;
-                Id = user.Id;
+                LastName = user.LastName;               
                 UserName = user.UserName;
-                IsAuthenticated = isAuthenticated;
                 IsAdministrator = isAdministrator;
             }
 
             public string FirstName { get; set; } = string.Empty;
             public string LastName { get; set; } = string.Empty;
-            public string Id { get; set; } = string.Empty;
             public string? UserName { get; set; } = string.Empty;
-            public bool? IsAuthenticated { get; set; }
-            public bool? IsAdministrator { get; set; }
+            public bool IsAdministrator { get; set; }
         }
+
+
+        [HttpPost]
+        [Route("Login")]
+        public async Task<ActionResult> Login(string userName)
+        {
+            if (string.IsNullOrEmpty(userName))
+                return BadRequest();
+
+            var result = await _signInManager.PasswordSignInAsync(userName, "password", isPersistent: true, lockoutOnFailure: false);
+            if (result.Succeeded)
+            {
+                Debug.WriteLine($"Login {userName} succeeded");
+                return Ok();
+            }
+            return Unauthorized();
+        }
+        
 
     }
 

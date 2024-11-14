@@ -22,8 +22,6 @@ namespace CommerceApiDemo.Controllers
     public class ShoppingController : ControllerBase
     {
 
-        string _userId = string.Empty;
-
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
@@ -36,13 +34,7 @@ namespace CommerceApiDemo.Controllers
 
         }
 
-        private void Initialize()
-        {
-            //_userId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
-            //_userId = "4151283c-1311-4340-af4b-7862b384a330";
-            _userId = "jerry";
-        }
-       
+
 
         #region Product
 
@@ -65,13 +57,13 @@ namespace CommerceApiDemo.Controllers
         [Route("Products/Sales/{count}")]
         public async Task<ActionResult<IEnumerable<ShoppingDto.Product>>> GetTopProducts(int count = 4)
         {
-            if(_context == null || _context.ProductCategory == null)
+            if (_context == null || _context.ProductCategory == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
             return await _context.Product
                 .OrderByDescending(a => _context.OrderProduct.Count(b => b.ProductId == a.Id))
                 .Take(count)
-                .Select(x => new ShoppingDto.Product { Id = x.Id, Title = x.Title, Description = x.Description, Brand = x.Brand, Price = x.Price, AvailableQty = x.AvailableQty, Quantity = 0, Model = x.ModelNumber,  Category = x.ProductCategory != null ? x.ProductCategory.Title : String.Empty })
+                .Select(x => new ShoppingDto.Product { Id = x.Id, Title = x.Title, Description = x.Description, Brand = x.Brand, Price = x.Price, AvailableQty = x.AvailableQty, Quantity = 0, Model = x.ModelNumber, Category = x.ProductCategory != null ? x.ProductCategory.Title : String.Empty })
                 .ToListAsync();
         }
 
@@ -79,7 +71,7 @@ namespace CommerceApiDemo.Controllers
         [Route("Products/Search/")]
         public async Task<ActionResult<IEnumerable<ShoppingDto.Product>>> GetProducts(string? searchString = null, int? categoryId = null)
         {
-            if(_context == null || _context.ProductCategory == null)
+            if (_context == null || _context.ProductCategory == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
             var productsQuery = from p in _context.Product where p.IsActive select p;
@@ -93,7 +85,7 @@ namespace CommerceApiDemo.Controllers
 
             if (categoryId != null)
             {
-                productsQuery = productsQuery.Where(c => c.ProductCategoryId == categoryId);                
+                productsQuery = productsQuery.Where(c => c.ProductCategoryId == categoryId);
             }
 
 
@@ -134,7 +126,7 @@ namespace CommerceApiDemo.Controllers
 
 
         #region Cart
-               
+
 
         [HttpGet]
         [Route("Cart")]
@@ -143,11 +135,13 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null || _context.OrderProduct == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
-            Initialize();
+            string userId;
+            if (!GetUserId(out userId))
+                return Unauthorized();
 
-            var order = await GetCartOrder();
+            var order = await GetCartOrder(userId);
             var customer = new ShoppingDto.Customer { Id = order.User.Id, UserName = order.User.UserName ?? String.Empty, FirstName = order.User.FirstName, LastName = order.User.LastName, Email = order.User.Email ?? String.Empty, PhoneNumber = order.User.PhoneNumber ?? String.Empty, Address1 = order.User.Address1, Address2 = order.User.Address2 ?? String.Empty, City = order.User.City, State = order.User.StateLocation != null ? order.User.StateLocation.Name : String.Empty, PostalCode = order.User.PostalCode, TaxRate = order.User.StateLocation?.TaxRate ?? 0 };
-            var products = order.OrderProducts.Select(x => new ShoppingDto.Product { Id = x.ProductId, Title = x.Product.Title, Description = x.Product.Description, Brand = x.Product.Brand, Price = x.Price, AvailableQty = x.Product.AvailableQty,  Quantity = x.Quantity, Model = x.Product.ModelNumber, Category = x.Product.ProductCategory != null ? x.Product.ProductCategory.Title : String.Empty }).ToList();
+            var products = order.OrderProducts.Select(x => new ShoppingDto.Product { Id = x.ProductId, Title = x.Product.Title, Description = x.Product.Description, Brand = x.Product.Brand, Price = x.Price, AvailableQty = x.Product.AvailableQty, Quantity = x.Quantity, Model = x.Product.ModelNumber, Category = x.Product.ProductCategory != null ? x.Product.ProductCategory.Title : String.Empty }).ToList();
             var cart = new ShoppingDto.Cart { Customer = customer, Products = products };
             return cart;
         }
@@ -159,18 +153,26 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null || _context.OrderProduct == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
-            Initialize();
+            string userId;
+            if (!GetUserId(out userId))
+                return Unauthorized();
 
-            var order = await GetCartOrder();
-            return order.OrderProducts.Select(x => new ShoppingDto.Product { Id = x.ProductId, Title = x.Product.Title, Description = x.Product.Description, Brand = x.Product.Brand, Price = x.Price, AvailableQty = x.Product.AvailableQty, Quantity = x.Quantity, Model = x.Product.ModelNumber, Category = x.Product.ProductCategory != null ? x.Product.ProductCategory.Title : String.Empty }).ToList();            
+
+            var order = await GetCartOrder(userId);
+            return order.OrderProducts.Select(x => new ShoppingDto.Product { Id = x.ProductId, Title = x.Product.Title, Description = x.Product.Description, Brand = x.Product.Brand, Price = x.Price, AvailableQty = x.Product.AvailableQty, Quantity = x.Quantity, Model = x.Product.ModelNumber, Category = x.Product.ProductCategory != null ? x.Product.ProductCategory.Title : String.Empty }).ToList();
         }
-                
+
         [HttpPut]
         [Route("Cart/Products/")]
         public async Task<ActionResult> UpdateCartProduct([FromForm] int productId, [FromForm] int quantity)
         {
             if (_context == null || _context.Order == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
+
+            string userId;
+            if (!GetUserId(out userId))
+                return Unauthorized();
+
 
             var product = _context.Product.Where(p => p.Id == productId).FirstOrDefault();
             if (product == null)
@@ -187,9 +189,8 @@ namespace CommerceApiDemo.Controllers
                 return BadRequest();
             }
 
-            Initialize();
 
-            var cart = await GetCartOrder();
+            var cart = await GetCartOrder(userId);
             var orderProduct = cart.OrderProducts.Where(op => op.ProductId == productId).FirstOrDefault();
             if (orderProduct != null)
             {
@@ -213,13 +214,16 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
+            string userId;
+            if (!GetUserId(out userId))
+                return Unauthorized();
+
             var product = _context.Product.Where(p => p.Id == productId).FirstOrDefault();
             if (product == null)
                 return NotFound();
 
-            Initialize();
 
-            var order = await GetCartOrder();
+            var order = await GetCartOrder(userId);
             var orderProduct = order.OrderProducts.Where(op => op.ProductId == productId).FirstOrDefault();
             if (orderProduct != null)
                 order.OrderProducts.Remove(orderProduct);
@@ -242,8 +246,11 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
-            Initialize();
-            Debug.WriteLine($"Checkout: {_userId}");
+            string userId;
+            if (!GetUserId(out userId))
+                return Unauthorized();
+
+            Debug.WriteLine($"Checkout: {userId}");
 
             if (String.IsNullOrEmpty(cardName) || cardName.Length < 3
                 || String.IsNullOrEmpty(cardNumber) || cardNumber.Length < 16
@@ -258,10 +265,10 @@ namespace CommerceApiDemo.Controllers
                 };
                 return BadRequest(customError);
             }
-         
+
 
             var order = await _context.Order
-                .Where(o => o.Id == orderId && o.User.UserName == _userId)
+                .Where(o => o.Id == orderId && o.User.Id == userId)
                 .Include(p => p.OrderProducts)
                 .ThenInclude(p => p.Product)
                 .Include(h => h.OrderHistory)
@@ -286,10 +293,10 @@ namespace CommerceApiDemo.Controllers
         }
 
 
-        async Task<CommerceApiDem.Models.Order> GetCartOrder()
+        async Task<CommerceApiDem.Models.Order> GetCartOrder(string userId)
         {
             var order = await _context.Order
-                .Where(c => c.User.UserName == _userId)
+                .Where(c => c.User.Id == userId)
                 .Include(c => c.User)
                 .ThenInclude(c => c.StateLocation)
                 .Include(c => c.OrderProducts)
@@ -301,14 +308,14 @@ namespace CommerceApiDemo.Controllers
 
             if (order == null || order.OrderHistory == null || !order.OrderHistory.Any())
             {
-                var user = await _context.Users.Where(x => x.UserName == _userId).Include(c => c.StateLocation).FirstAsync();
-                return new CommerceApiDem.Models.Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>(), UserId = user.Id, User = user};
+                var user = await _context.Users.Where(x => x.Id == userId).Include(c => c.StateLocation).FirstAsync();
+                return new CommerceApiDem.Models.Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>(), UserId = user.Id, User = user };
             }
 
             var history = order.OrderHistory.OrderBy(x => x.OrderDate).LastOrDefault();
             if (history == null || history.OrderStatusId != (int)OrderState.Cart)
             {
-                var user = await _context.Users.Where(x => x.UserName == _userId).Include(c => c.StateLocation).FirstAsync();
+                var user = await _context.Users.Where(x => x.Id == userId).Include(c => c.StateLocation).FirstAsync();
                 return new CommerceApiDem.Models.Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>(), UserId = user.Id, User = user };
             };
 
@@ -328,11 +335,14 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
-            Initialize();
-            Debug.WriteLine($"GetOrders: {_userId}");
+            string userId;
+            if (!GetUserId(out userId))
+                return Unauthorized();
+
+            Debug.WriteLine($"GetOrders: {userId}");
 
             var orders = await _context.Order
-                            .Where(o => o.User.UserName == _userId)
+                            .Where(o => o.User.Id == userId)
                             .Include(c => c.User)
                             .ThenInclude(s => s.StateLocation)
                             .Include(p => p.OrderProducts)
@@ -377,11 +387,14 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
-            Initialize();
-            Debug.WriteLine($"GetOrder: {_userId}");
+            string userId;
+            if (!GetUserId(out userId))
+                return Unauthorized();
+
+            Debug.WriteLine($"GetOrder: {userId}");
 
             var order = await _context.Order
-                        .Where(o => o.Id == id && o.User.UserName == _userId)
+                        .Where(o => o.Id == id && o.User.Id == userId)
                         .Include(c => c.User)
                         .ThenInclude(s => s.StateLocation)
                         .Include(p => p.OrderProducts)
@@ -400,7 +413,7 @@ namespace CommerceApiDemo.Controllers
 
             return Ok(order);
         }
-        
+
         [HttpGet]
         [Route("Orders/States")]
         public async Task<ActionResult<IEnumerable<ShoppingDto.Status>>> GetOrderStatuses()
@@ -414,9 +427,28 @@ namespace CommerceApiDemo.Controllers
                 .OrderBy(x => x.Name)
                 .Select(x => new ShoppingDto.Status { Id = x.Id, Name = x.Name })
                 .ToListAsync();
-        }   
+        }
 
         #endregion
+
+
+        bool GetUserId(out string userId)
+        {
+            userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+            {
+                // Default to user 'jerry'
+                var user = _userManager.FindByNameAsync("jerry").Result;
+                if (user == null)
+                {
+                    return false;
+                }   
+                userId = user.Id;                
+            }
+               
+
+            return true;
+        }
 
     }
 }
