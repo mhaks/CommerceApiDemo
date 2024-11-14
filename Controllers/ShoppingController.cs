@@ -142,7 +142,7 @@ namespace CommerceApiDemo.Controllers
             var order = await GetCartOrder(userId);
             var customer = new ShoppingDto.Customer { Id = order.User.Id, UserName = order.User.UserName ?? String.Empty, FirstName = order.User.FirstName, LastName = order.User.LastName, Email = order.User.Email ?? String.Empty, PhoneNumber = order.User.PhoneNumber ?? String.Empty, Address1 = order.User.Address1, Address2 = order.User.Address2 ?? String.Empty, City = order.User.City, State = order.User.StateLocation != null ? order.User.StateLocation.Name : String.Empty, PostalCode = order.User.PostalCode, TaxRate = order.User.StateLocation?.TaxRate ?? 0 };
             var products = order.OrderProducts.Select(x => new ShoppingDto.Product { Id = x.ProductId, Title = x.Product.Title, Description = x.Product.Description, Brand = x.Product.Brand, Price = x.Price, AvailableQty = x.Product.AvailableQty, Quantity = x.Quantity, Model = x.Product.ModelNumber, Category = x.Product.ProductCategory != null ? x.Product.ProductCategory.Title : String.Empty }).ToList();
-            var cart = new ShoppingDto.Cart { Customer = customer, Products = products };
+            var cart = new ShoppingDto.Cart {Id = order.Id, Customer = customer, Products = products };
             return cart;
         }
 
