@@ -135,8 +135,8 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null || _context.OrderProduct == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
-            string userId;
-            if (!GetUserId(out userId))
+            string userId = await GetUserId();
+            if (String.IsNullOrEmpty(userId))
                 return Unauthorized();
 
             var order = await GetCartOrder(userId);
@@ -153,8 +153,8 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null || _context.OrderProduct == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
-            string userId;
-            if (!GetUserId(out userId))
+            string userId = await GetUserId();
+            if (String.IsNullOrEmpty(userId))
                 return Unauthorized();
 
 
@@ -169,8 +169,8 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
-            string userId;
-            if (!GetUserId(out userId))
+            string userId = await GetUserId();
+            if (String.IsNullOrEmpty(userId))
                 return Unauthorized();
 
 
@@ -214,8 +214,8 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
-            string userId;
-            if (!GetUserId(out userId))
+            string userId = await GetUserId();
+            if (String.IsNullOrEmpty(userId))
                 return Unauthorized();
 
             var product = _context.Product.Where(p => p.Id == productId).FirstOrDefault();
@@ -246,8 +246,8 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
-            string userId;
-            if (!GetUserId(out userId))
+            string userId = await GetUserId();
+            if (String.IsNullOrEmpty(userId))
                 return Unauthorized();
 
             Debug.WriteLine($"Checkout: {userId}");
@@ -335,8 +335,8 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
-            string userId;
-            if (!GetUserId(out userId))
+            string userId = await GetUserId();
+            if (String.IsNullOrEmpty(userId))
                 return Unauthorized();
 
             Debug.WriteLine($"GetOrders: {userId}");
@@ -387,8 +387,8 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Order == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
 
-            string userId;
-            if (!GetUserId(out userId))
+            string userId = await GetUserId();
+            if (String.IsNullOrEmpty(userId))
                 return Unauthorized();
 
             Debug.WriteLine($"GetOrder: {userId}");
@@ -432,22 +432,36 @@ namespace CommerceApiDemo.Controllers
         #endregion
 
 
-        bool GetUserId(out string userId)
+        async Task<string> GetUserId()
         {
-            userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.FindByNameAsync("jerry");
+            if (user != null)
+            {
+                return user.Id;
+            }
+            else
+            {
+                return string.Empty;
+            }
+
+            /*
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null)
             {
                 // Default to user 'jerry'
-                var user = _userManager.FindByNameAsync("jerry").Result;
-                if (user == null)
+                var user = await _userManager.FindByNameAsync("jerry");
+                if (user != null)
                 {
-                    return false;
-                }   
-                userId = user.Id;                
+                    userId = user.Id;
+                } 
+                else {
+                    return string.Empty;
+                }
             }
                
 
-            return true;
+            return userId;
+            */
         }
 
     }
