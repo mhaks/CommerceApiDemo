@@ -146,25 +146,10 @@ namespace CommerceApiDemo.Controllers
             return cart;
         }
 
-        [HttpGet]
-        [Route("Cart/Products")]
-        public async Task<ActionResult<IEnumerable<ShoppingDto.Product>>> GetCartProducts()
-        {
-            if (_context == null || _context.Order == null || _context.OrderProduct == null)
-                return StatusCode(StatusCodes.Status500InternalServerError);
-
-            string userId = await GetUserId();
-            if (String.IsNullOrEmpty(userId))
-                return Unauthorized();
-
-
-            var order = await GetCartOrder(userId);
-            return order.OrderProducts.Select(x => new ShoppingDto.Product { Id = x.ProductId, Title = x.Product.Title, Description = x.Product.Description, Brand = x.Product.Brand, Price = x.Price, AvailableQty = x.Product.AvailableQty, Quantity = x.Quantity, Model = x.Product.ModelNumber, Category = x.Product.ProductCategory != null ? x.Product.ProductCategory.Title : String.Empty }).ToList();
-        }
-
-        [HttpPut]
+        
+        [HttpPost]
         [Route("Cart/Products/")]
-        public async Task<ActionResult> UpdateCartProduct([FromForm] int productId, [FromForm] int quantity)
+        public async Task<ActionResult<ShoppingDto.Cart>> UpdateCartProduct([FromForm] int productId, [FromForm] int quantity)
         {
             if (_context == null || _context.Order == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
@@ -204,12 +189,12 @@ namespace CommerceApiDemo.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok();
+            return await GetCart();
         }
 
         [HttpDelete]
         [Route("Cart/Products/{productId}")]
-        public async Task<ActionResult> RemoveCartProduct(int productId)
+        public async Task<ActionResult<ShoppingDto.Cart>> RemoveCartProduct(int productId)
         {
             if (_context == null || _context.Order == null)
                 return StatusCode(StatusCodes.Status500InternalServerError);
@@ -236,7 +221,7 @@ namespace CommerceApiDemo.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok();
+            return await GetCart();
         }
 
         [HttpPost]

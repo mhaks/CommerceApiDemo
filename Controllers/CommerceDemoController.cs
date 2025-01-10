@@ -34,50 +34,12 @@ namespace CommerceApiDemo.Controllers
             return await query.ToListAsync();
         }
 
-
-        [HttpGet]
-        [Route("Users/{id}")]
-        public async Task<ActionResult<CommerceUser>> GetUser(string id)
-        {
-            ApplicationUser? appUser = null;
-            if (User.Identity == null || !User.Identity.IsAuthenticated)
-            {
-                Debug.WriteLine("GetUser: "  + User.Identity == null ? "No user" : "User not authenticated");
-                // Find the default user by username                
-                appUser = await _userManager.FindByNameAsync("jerry");
-                if (appUser != null)
-                {
-                    // Sign in the default user
-                    await _signInManager.SignInAsync(appUser, isPersistent: false);
-                    Debug.WriteLine($"GetUser {appUser.UserName} logged in");
-                }
-                else
-                {
-                    return NotFound();
-                }
-            }
-            else
-            {
-                Debug.WriteLine("GetUser authenticated: " + User.Identity.Name);
-                appUser = await _userManager.FindByNameAsync(User.Identity?.Name ?? "jerry");
-            }
-            
         
-            if (appUser == null)
-                return NotFound();
-
-            return new CommerceUser(
-                             appUser,                             
-                             User.Identity != null && User.IsInRole("ADMIN")
-                         );
-
-        }
-
-        [HttpPut]
+        [HttpPost]
         [Route("Users")]
-        public async Task<ActionResult<CommerceUser>> SetUser([FromForm] string userName)
+        public async Task<ActionResult<CommerceUser>> SetUser(string userName)
         {
-            Debug.WriteLine($"SetUser {userName} logging in");
+            Debug.WriteLine($"SetUser {userName}");
 
 
             if (string.IsNullOrEmpty(userName))
@@ -90,7 +52,7 @@ namespace CommerceApiDemo.Controllers
 
             await _signInManager.SignOutAsync();
             await _signInManager.SignInAsync(appUser, isPersistent: false);
-            Debug.WriteLine($"SetUser {userName} logged in");
+            Debug.WriteLine($"SetUser {userName} complete");
 
             return new CommerceUser(
                                     appUser,
@@ -99,6 +61,7 @@ namespace CommerceApiDemo.Controllers
 
         }
 
+        
 
         public class CommerceUser
         {
@@ -117,21 +80,7 @@ namespace CommerceApiDemo.Controllers
         }
 
 
-        [HttpPost]
-        [Route("Login")]
-        public async Task<ActionResult> Login(string userName)
-        {
-            if (string.IsNullOrEmpty(userName))
-                return BadRequest();
-
-            var result = await _signInManager.PasswordSignInAsync(userName, "password", isPersistent: true, lockoutOnFailure: false);
-            if (result.Succeeded)
-            {
-                Debug.WriteLine($"Login {userName} succeeded");
-                return Ok();
-            }
-            return Unauthorized();
-        }
+        
         
 
     }
