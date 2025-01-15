@@ -186,6 +186,12 @@ namespace CommerceApiDemo.Controllers
                 cart.OrderProducts.Add(new OrderProduct { ProductId = productId, Quantity = quantity, Price = product.Price });
             }
 
+            if (cart.OrderHistory == null || !cart.OrderHistory.Any())
+            {
+                cart.OrderHistory = new List<OrderHistory> { new OrderHistory { OrderId = cart.Id, OrderDate = DateTime.UtcNow, OrderStatusId = (int)OrderState.Cart } };
+                _context.Order.Add(cart);
+            }
+
 
             await _context.SaveChangesAsync();
 
