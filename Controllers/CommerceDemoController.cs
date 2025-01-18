@@ -3,7 +3,11 @@ using CommerceApiDem.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using System.Diagnostics;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace CommerceApiDemo.Controllers
 {
@@ -12,14 +16,12 @@ namespace CommerceApiDemo.Controllers
     public class CommerceDemoController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IConfiguration _config;
 
-        public CommerceDemoController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+        public CommerceDemoController(ApplicationDbContext context, IConfiguration config)
         {
             _context = context;
-            _userManager = userManager;
-            _signInManager = signInManager;
+            _config = config;
         }
 
         [HttpGet]
@@ -36,29 +38,49 @@ namespace CommerceApiDemo.Controllers
 
         
         [HttpPost]
-        [Route("Users")]
-        public async Task<ActionResult<CommerceUser>> SetUser(string userName)
+        [Route("Login")]
+        public async Task<ActionResult> Login(string userName)
         {
             Debug.WriteLine($"SetUser {userName}");
 
 
             if (string.IsNullOrEmpty(userName))
                 return BadRequest();
-                        
-            var appUser = await _userManager.FindByNameAsync(userName);
 
-            if (appUser == null)
-                return NotFound();
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.UserName == userName);
 
-            await _signInManager.SignOutAsync();
-            await _signInManager.SignInAsync(appUser, isPersistent: false);
+            if (user == null)
+                return Unauthorized();
+
+
+            var issuer = _config["Jwt:Issuer"];
+            var audience = _config["Jwt:Audience"];
+            var secretKey = _config["Jwt:Key"];
+
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, userName),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.Name, userName) // Adding username as a claim
+            };
+
+            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(secretKey));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: issuer,
+                audience: audience,
+                claims: claims,
+                expires: DateTime.Now.AddHours(2),
+                signingCredentials: creds);
+
+
+            var tokenHandler = new JwtSecurityTokenHandler();            
+            var tokenString = tokenHandler.WriteToken(token);
+
             Debug.WriteLine($"SetUser {userName} complete");
 
-            return new CommerceUser(
-                                    appUser,
-                                    User.Identity != null && User.IsInRole("ADMIN")
-                                );
-
+            return Ok( new { token = tokenString });
         }
 
         

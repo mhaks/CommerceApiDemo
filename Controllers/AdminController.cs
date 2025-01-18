@@ -1,6 +1,7 @@
 ﻿using CommerceApiDem.Data;
 using CommerceApiDem.Models;
 using CommerceApiDemo.AdminDto;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
@@ -9,20 +10,17 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace CommerceApiDemo.Controllers
 {
+    [Authorize]
     [Route("[controller]")]
     [ApiController]
     public class AdminController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
 
-        public AdminController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+
+        public AdminController(ApplicationDbContext context)
         {
             _context = context;
-            _userManager = userManager;
-            _signInManager = signInManager;
-
         }
 
         [HttpGet]
@@ -381,7 +379,7 @@ namespace CommerceApiDemo.Controllers
             //validate user fields
             var msgs = new List<string>();
 
-            if (product.Title.IsNullOrEmpty())
+            if (String.IsNullOrEmpty(product.Title))
                 msgs.Add("Product title is required.");
                 
             if (product.CategoryId == 0)
@@ -505,7 +503,7 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.ProductCategory == null)
                 return NotFound();
 
-            if (category.Title.IsNullOrEmpty())
+            if (String.IsNullOrEmpty(category.Title))
             {
                 var msg = "Category title is required.";
                 var customError = new
@@ -554,19 +552,24 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Users == null)
                 return NotFound();
 
-            var customers = await _userManager.GetUsersInRoleAsync("CUSTOMER");
-
-            var query = from c in customers
-                        join st in _context.StateLocation on c.StateLocationId equals st.Id
-                        select c;
+            var query = from user in _context.Users
+                        join userRole in _context.UserRoles on user.Id equals userRole.UserId
+                        join role in _context.Roles on userRole.RoleId equals role.Id
+                        where role.Name == "CUSTOMER"
+                        select user;
 
             if (!string.IsNullOrEmpty(search))
+            {
                 query = query.Where(c => (c.UserName != null && c.UserName.Contains(search)) || c.FirstName.Contains(search) || c.LastName.Contains(search));
+            }
 
-            
-            var users = query.OrderBy(c => c.LastName).ThenBy(c => c.FirstName).ToList();
- 
-            return Ok(users);
+            var customers = await query
+                .Include(c => c.StateLocation)
+                .OrderBy(c => c.LastName)
+                .ThenBy(c => c.FirstName)
+                .ToListAsync();
+
+            return Ok(customers);
         }
 
         [HttpGet]
@@ -575,15 +578,13 @@ namespace CommerceApiDemo.Controllers
         {
             if (_context == null || _context.Users == null)
                 return NotFound();
-
-            var customers = await _userManager.GetUsersInRoleAsync("CUSTOMER");
-
-            var query = from c in customers
+            
+            var query = from c in _context.Users
                         where c.Id == id
                         join st in _context.StateLocation on c.StateLocationId equals st.Id
                         select c;
 
-            var user = query.FirstOrDefault();
+            var user = await query.FirstOrDefaultAsync();
 
             if (user == null)
                 return NotFound();
@@ -611,32 +612,32 @@ namespace CommerceApiDemo.Controllers
 
             //validate user fields
             var msgs = new List<string>();
-            if (customer.UserName.IsNullOrEmpty())
+            if (String.IsNullOrEmpty(customer.UserName))
                 msgs.Add("Username is required.");  
 
-            if (customer.FirstName.IsNullOrEmpty())
+            if (String.IsNullOrEmpty(customer.FirstName))
                 msgs.Add("First Name is required.");
 
-            if (customer.LastName.IsNullOrEmpty())
+            if (String.IsNullOrEmpty(customer.LastName))
                 msgs.Add("Last Name is required.");
 
-            if (customer.Email.IsNullOrEmpty())
+            if (String.IsNullOrEmpty(customer.Email))
                 msgs.Add("Email is required.");
 
-            if (customer.PhoneNumber.IsNullOrEmpty())
+            if (String.IsNullOrEmpty(customer.PhoneNumber))
                 msgs.Add("Phone Number is required.");
 
-            if (customer.Address1.IsNullOrEmpty())
+            if (String.IsNullOrEmpty(customer.Address1))
                 msgs.Add("Address is required.");
 
-            if (customer.City.IsNullOrEmpty())
+            if (String.IsNullOrEmpty(customer.City))
                 msgs.Add("City is required.");
 
             var stateLocation = await _context.StateLocation.FindAsync(customer.StateLocationId);
             if (customer.StateLocationId == 0 || stateLocation == null)   
                 msgs.Add("State is required.");
 
-            if (customer.PostalCode.IsNullOrEmpty())
+            if (String.IsNullOrEmpty(customer.PostalCode))
                 msgs.Add("Postal Code is required.");
 
             if (msgs.Count > 0)                
@@ -699,10 +700,7 @@ namespace CommerceApiDemo.Controllers
             }
             else
             {
-               if (_userManager == null)
-                    return BadRequest();
-
-                user = await _userManager.FindByIdAsync(customer.Id);
+                user = await _context.Users.FindAsync(customer.Id);
 
                 if (user == null)
                 {
@@ -739,8 +737,8 @@ namespace CommerceApiDemo.Controllers
                 user.StateLocationId = customer.StateLocationId;
                 user.PostalCode = customer.PostalCode;
 
-                await _userManager.UpdateAsync(user);
-                
+                await _context.SaveChangesAsync();
+
             }
 
             return new CustomerResponse

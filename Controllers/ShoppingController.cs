@@ -17,28 +17,25 @@ using CommerceApiDemo.ShoppingDto;
 
 namespace CommerceApiDemo.Controllers
 {
+
     [Route("[controller]")]
     [ApiController]
     public class ShoppingController : ControllerBase
     {
 
         private readonly ApplicationDbContext _context;
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
+        
 
-        public ShoppingController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+        public ShoppingController(ApplicationDbContext context)
         {
             _context = context;
-            _userManager = userManager;
-            _signInManager = signInManager;
-
         }
 
 
 
         #region Product
 
-        //[Authorize]
+
         [HttpGet]
         [Route("Products/Categories")]
         public async Task<ActionResult<IEnumerable<ShoppingDto.ProductCategory>>> GetProductCategories()
@@ -127,7 +124,7 @@ namespace CommerceApiDemo.Controllers
 
         #region Cart
 
-
+        [Authorize]
         [HttpGet]
         [Route("Cart")]
         public async Task<ActionResult<ShoppingDto.Cart>> GetCart()
@@ -146,7 +143,8 @@ namespace CommerceApiDemo.Controllers
             return cart;
         }
 
-        
+
+        [Authorize]
         [HttpPost]
         [Route("Cart/Products/")]
         public async Task<ActionResult<ShoppingDto.Cart>> UpdateCartProduct([FromForm] int productId, [FromForm] int quantity)
@@ -198,6 +196,8 @@ namespace CommerceApiDemo.Controllers
             return await GetCart();
         }
 
+
+        [Authorize]
         [HttpDelete]
         [Route("Cart/Products/{productId}")]
         public async Task<ActionResult<ShoppingDto.Cart>> RemoveCartProduct(int productId)
@@ -230,6 +230,8 @@ namespace CommerceApiDemo.Controllers
             return await GetCart();
         }
 
+
+        [Authorize]
         [HttpPost]
         [Route("Cart/Checkout")]
         public async Task<ActionResult<int>> Checkout([FromForm] int orderId, [FromForm] string cardName, [FromForm] string cardNumber, [FromForm] string cardExpiration, [FromForm] string cardCVV)
@@ -319,6 +321,7 @@ namespace CommerceApiDemo.Controllers
 
         #region Orders
 
+        [Authorize]
         [HttpGet]
         [Route("Orders")]
         public async Task<ActionResult<IEnumerable<ShoppingDto.Order>>> GetOrders()
@@ -371,6 +374,8 @@ namespace CommerceApiDemo.Controllers
             return Ok(shoppingOrders);
         }
 
+
+        [Authorize]
         [HttpGet]
         [Route("Orders/{id}")]
         public async Task<ActionResult<ShoppingDto.Order>> GetOrder(int id)
@@ -425,7 +430,12 @@ namespace CommerceApiDemo.Controllers
 
         async Task<string> GetUserId()
         {
-            var user = await _userManager.FindByNameAsync("jerry");
+            Debug.WriteLine("Current User: " + User.Identity?.Name);
+            var username = User.Identity?.Name; // Retrieves the username
+            if (string.IsNullOrEmpty(username))
+                return string.Empty;
+
+            var user = await _context.Users.Where(x => x.UserName == username).FirstOrDefaultAsync();
             if (user != null)
             {
                 return user.Id;
@@ -433,26 +443,7 @@ namespace CommerceApiDemo.Controllers
             else
             {
                 return string.Empty;
-            }
-
-            /*
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null)
-            {
-                // Default to user 'jerry'
-                var user = await _userManager.FindByNameAsync("jerry");
-                if (user != null)
-                {
-                    userId = user.Id;
-                } 
-                else {
-                    return string.Empty;
-                }
-            }
-               
-
-            return userId;
-            */
+            }           
         }
 
     }
