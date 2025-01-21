@@ -31,7 +31,10 @@ namespace CommerceApiDemo.Controllers
             if (_context == null || _context.Users == null)
                 return NotFound();
 
-            var query = from u in _context.Users orderby u.UserName select new CommerceUser(u, u.UserName == "administrator");
+            var query = from u in _context.Users 
+                        join ur in _context.UserRoles on u.Id equals ur.UserId
+                        join r in _context.Roles on ur.RoleId equals r.Id
+                        orderby u.UserName select new CommerceUser(u, r.Name == "ADMIN");
 
             return await query.ToListAsync();
         }
@@ -52,6 +55,12 @@ namespace CommerceApiDemo.Controllers
             if (user == null)
                 return Unauthorized();
 
+            var isAdmin = await (from ur in _context.UserRoles
+                                 join r in _context.Roles on ur.RoleId equals r.Id
+                                 where ur.UserId == user.Id && r.Name == "ADMIN"
+                                 select ur).AnyAsync();
+
+            var commerceUser = new CommerceUser(user, isAdmin);
 
             var issuer = _config["Jwt:Issuer"];
             var audience = _config["Jwt:Audience"];
@@ -78,9 +87,11 @@ namespace CommerceApiDemo.Controllers
             var tokenHandler = new JwtSecurityTokenHandler();            
             var tokenString = tokenHandler.WriteToken(token);
 
+            
+
             Debug.WriteLine($"SetUser {userName} complete");
 
-            return Ok( new { token = tokenString });
+            return Ok( new { user = commerceUser, token = tokenString });
         }
 
         
