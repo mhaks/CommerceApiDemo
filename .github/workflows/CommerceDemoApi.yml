@@ -9,7 +9,7 @@ env:
   AZURE_WEBAPP_NAME: CommerceDemoApi
   AZURE_WEBAPP_PACKAGE_PATH: .\publish
   CONFIGURATION: Release
-  DOTNET_CORE_VERSION: '9.0.0-preview.*'
+  DOTNET_CORE_VERSION: 9.0.x
   WORKING_DIRECTORY: .
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Setup .NET SDK
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ env.DOTNET_CORE_VERSION }}
     - name: Restore
