@@ -1,13 +1,11 @@
-﻿using CommerceApiDem.Data;
-using CommerceApiDem.Models;
-using Microsoft.AspNetCore.Identity;
+﻿using CommerceDemo.Data;
+using CommerceDemo.Data.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 
 namespace CommerceApiDemo.Controllers
 {
@@ -15,10 +13,10 @@ namespace CommerceApiDemo.Controllers
     [ApiController]
     public class CommerceDemoController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly CommerceDemoContext _context;
         private readonly IConfiguration _config;
 
-        public CommerceDemoController(ApplicationDbContext context, IConfiguration config)
+        public CommerceDemoController(CommerceDemoContext context, IConfiguration config)
         {
             _context = context;
             _config = config;
@@ -65,6 +63,13 @@ namespace CommerceApiDemo.Controllers
             var issuer = _config["Jwt:Issuer"];
             var audience = _config["Jwt:Audience"];
             var secretKey = _config["Jwt:Key"];
+            if (string.IsNullOrEmpty(secretKey))
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "JWT secret key is not configured.");
+            }
+
+            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(secretKey));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
             {
@@ -72,9 +77,6 @@ namespace CommerceApiDemo.Controllers
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(ClaimTypes.Name, userName) // Adding username as a claim
             };
-
-            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(secretKey));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
                 issuer: issuer,

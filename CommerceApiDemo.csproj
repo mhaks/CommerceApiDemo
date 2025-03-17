@@ -20,4 +20,8 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.3.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\CommerceDemo.Data\CommerceDemo.Data.csproj" />
+  </ItemGroup>
+
 </Project>

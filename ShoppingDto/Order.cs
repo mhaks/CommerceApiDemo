@@ -1,4 +1,4 @@
-﻿using CommerceApiDem.Models;
+﻿using CommerceDemo.Data.Models;
 
 
 namespace CommerceApiDemo.ShoppingDto

@@ -1,19 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using CommerceDemo.Data;
+using CommerceDemo.Data.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using CommerceApiDem.Models;
-using CommerceApiDem.Data;
-using System.Security.Claims;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc.Filters;
 using System.Diagnostics;
-using CommerceApiDemo.ShoppingDto;
 
 namespace CommerceApiDemo.Controllers
 {
@@ -23,10 +13,10 @@ namespace CommerceApiDemo.Controllers
     public class ShoppingController : ControllerBase
     {
 
-        private readonly ApplicationDbContext _context;
+        private readonly CommerceDemoContext _context;
         
 
-        public ShoppingController(ApplicationDbContext context)
+        public ShoppingController(CommerceDemoContext context)
         {
             _context = context;
         }
@@ -286,7 +276,7 @@ namespace CommerceApiDemo.Controllers
         }
 
 
-        async Task<CommerceApiDem.Models.Order> GetCartOrder(string userId)
+        async Task<CommerceDemo.Data.Models.Order> GetCartOrder(string userId)
         {
             var order = await _context.Order
                 .Where(c => c.User.Id == userId)
@@ -302,14 +292,14 @@ namespace CommerceApiDemo.Controllers
             if (order == null || order.OrderHistory == null || !order.OrderHistory.Any())
             {
                 var user = await _context.Users.Where(x => x.Id == userId).Include(c => c.StateLocation).FirstAsync();
-                return new CommerceApiDem.Models.Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>(), UserId = user.Id, User = user };
+                return new CommerceDemo.Data.Models.Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>(), UserId = user.Id, User = user };
             }
 
             var history = order.OrderHistory.OrderBy(x => x.OrderDate).LastOrDefault();
             if (history == null || history.OrderStatusId != (int)OrderState.Cart)
             {
                 var user = await _context.Users.Where(x => x.Id == userId).Include(c => c.StateLocation).FirstAsync();
-                return new CommerceApiDem.Models.Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>(), UserId = user.Id, User = user };
+                return new CommerceDemo.Data.Models.Order { OrderProducts = new List<OrderProduct>(), OrderHistory = new List<OrderHistory>(), UserId = user.Id, User = user };
             };
 
             return order;
@@ -347,7 +337,7 @@ namespace CommerceApiDemo.Controllers
                             .AsNoTracking()
                             .ToListAsync();
 
-            var removes = new List<CommerceApiDem.Models.Order>();
+            var removes = new List<CommerceDemo.Data.Models.Order>();
             foreach (var order in orders)
             {
                 // don't need to show order in cart

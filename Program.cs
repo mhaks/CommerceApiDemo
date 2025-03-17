@@ -1,19 +1,17 @@
-using CommerceApiDem.Data;
-using CommerceApiDem.Models;
-using Microsoft.AspNetCore.Identity;
+using CommerceDemo.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
-using System.Diagnostics;
-using System.Text.Json.Serialization;
-using System.Text;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Diagnostics;
+using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContext<CommerceDemoContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ApplicationDbContext") ?? throw new InvalidOperationException("Connection string 'ApplicationDbContext' not found.")));
 
 
@@ -21,7 +19,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 var issuer = builder.Configuration["Jwt:Issuer"];
 var audience = builder.Configuration["Jwt:Audience"];
-var key = builder.Configuration["Jwt:Key"];
+var secretKey = builder.Configuration["Jwt:Key"];
+
+if (string.IsNullOrEmpty(issuer) || string.IsNullOrEmpty(audience) || string.IsNullOrEmpty(secretKey))
+    throw new InvalidOperationException("Jwt:Issuer, Jwt:Audience, and Jwt:Key must be set in the configuration.");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -34,7 +35,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = issuer,      
             ValidAudience = audience,  
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)) 
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)) 
         };
         options.Events = new JwtBearerEvents
         {
@@ -56,13 +57,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             OnChallenge = context =>
             {
                 Debug.WriteLine("Authorization challenge triggered.");
-
-                // Suppress the default 302 redirect
-                //context.HandleResponse();
-                //context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                //context.Response.ContentType = "application/json";
-                //return context.Response.WriteAsync("{\"error\": \"Unauthorized\"}");
-
                 return Task.CompletedTask;
             }
         };

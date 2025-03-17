@@ -1,12 +1,11 @@
-﻿using CommerceApiDem.Data;
-using CommerceApiDem.Models;
-using CommerceApiDemo.AdminDto;
+﻿using CommerceApiDemo.AdminDto;
+using CommerceDemo.Data;
+using CommerceDemo.Data.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 
 namespace CommerceApiDemo.Controllers
 {
@@ -15,10 +14,10 @@ namespace CommerceApiDemo.Controllers
     [ApiController]
     public class AdminController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly CommerceDemoContext _context;
 
 
-        public AdminController(ApplicationDbContext context)
+        public AdminController(CommerceDemoContext context)
         {
             _context = context;
         }
@@ -35,7 +34,7 @@ namespace CommerceApiDemo.Controllers
             var query = from o in _context.Order select o; ;
 
             var lookbackDate = DateTime.Now.AddDays(-Days).Date;
-            query = query.Where(o => o.OrderHistory.Any(h => h.OrderStatusId == (int)CommerceApiDem.Models.OrderState.Processing && h.OrderDate >= lookbackDate));
+            query = query.Where(o => o.OrderHistory.Any(h => h.OrderStatusId == (int)CommerceDemo.Data.Models.OrderState.Processing && h.OrderDate >= lookbackDate));
 
             var orders = await query
                             .Include(o => o.OrderProducts)
@@ -700,7 +699,7 @@ namespace CommerceApiDemo.Controllers
             }
             else
             {
-                user = await _context.Users.FindAsync(customer.Id);
+                user = await _context.Users.FindAsync(customer.Id) ?? throw new InvalidOperationException("User not found.");
 
                 if (user == null)
                 {
